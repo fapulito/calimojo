@@ -8,6 +8,9 @@ const cors = require('cors');
 const path = require('path');
 const { sessionStore, testDatabaseConnection, initializeDatabase } = require('./db');
 const databaseRouter = require('../api/database');
+const jwtRouter = require('../api/auth/jwt');
+const sessionsRouter = require('../api/sessions');
+const { trackSession, checkMultiDeviceSessions } = require('../lib/middleware/sessionTracker');
 
 const app = express();
 
@@ -35,6 +38,10 @@ app.use(session({
 // Passport initialization
 app.use(passport.initialize());
 app.use(passport.session());
+
+// Session tracking middleware (after passport setup)
+app.use(trackSession);
+app.use(checkMultiDeviceSessions);
 
 // Facebook Strategy
 passport.use(new FacebookStrategy({
@@ -162,6 +169,12 @@ app.get('/api/auth/status', (req, res) => {
 
 // Database API routes
 app.use('/api/database', databaseRouter);
+
+// JWT Auth API routes
+app.use('/api/auth/jwt', jwtRouter);
+
+// Session management API routes
+app.use('/api/sessions', sessionsRouter);
 
 // API route for poker functionality (placeholder)
 app.get('/api/poker/games', (req, res) => {

@@ -52,7 +52,10 @@ if (connectionString) {
       // Return an empty object that won't override our custom models
       return {};
     },
-    authenticate: async () => console.log('Mock database authentication')
+    authenticate: async () => {
+      console.log('Mock database authentication');
+      return Promise.resolve();
+    }
   };
 }
 
