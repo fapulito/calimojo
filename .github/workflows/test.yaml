@@ -30,7 +30,7 @@ jobs:
       
       - name: Install dependencies
         run: |
-          cpanm --installdeps --notest .
+          cd mojopoker-1.1.1 && cpanm --installdeps --notest .
           cpanm Test::More Test::Exception Test::MockModule Test::Output
       
       - name: Setup PostgreSQL schema

@@ -17,6 +17,7 @@ class WebSocketClient {
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 5;
     this.reconnectDelay = 1000; // Start with 1 second delay
+    this.reconnectTimer = null; // Timer handle for reconnection
     this.eventHandlers = {
       open: [],
       message: [],
@@ -69,7 +70,9 @@ class WebSocketClient {
     } catch (error) {
       console.error('WebSocket connection error:', error);
       this.emit('error', error);
-      this.scheduleReconnect();
+      if (this.reconnectAttempts < this.maxReconnectAttempts) {
+        this.scheduleReconnect();
+      }
     }
   }
 
@@ -77,10 +80,24 @@ class WebSocketClient {
    * Schedule reconnection with exponential backoff
    */
   scheduleReconnect() {
+    // Check if we've exceeded max attempts
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.log('Max reconnection attempts reached, giving up');
+      return;
+    }
+
+    // Clear any existing timer to prevent stacking
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
+    // Increment attempts and calculate delay
     this.reconnectAttempts++;
     const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
 
-    setTimeout(() => {
+    // Store timer reference for cleanup
+    this.reconnectTimer = setTimeout(() => {
       console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
       this.connect();
     }, delay);

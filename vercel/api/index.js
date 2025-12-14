@@ -86,8 +86,8 @@ app.use(passport.session());
 
 // Facebook Strategy
 passport.use(new FacebookStrategy({
-    clientID: process.env.FACEBOOK_APP_ID,
-    clientSecret: process.env.FACEBOOK_APP_SECRET,
+    clientID: process.env.FACEBOOK_APP_ID || process.env.FACEBOOK_APP_ID,
+    clientSecret: process.env.FACEBOOK_APP_SECRET || process.env.FACEBOOK_APP_SECRET,
     callbackURL: process.env.FACEBOOK_CALLBACK_URL || '/auth/facebook/callback',
     profileFields: ['id', 'displayName', 'emails', 'photos']
   },
