@@ -258,7 +258,7 @@ We welcome contributions! Please follow these guidelines:
 
 For questions and bug reports:
 - **Original Author**: ngraham@cpan.org
-- **Cline Refactoring**: support@mojopoker.xyz
+- **Cline Refactoring**: fapulito@gmail.com
 - **Issues**: https://github.com/fapulito/calimojo/issues
 
 ## 📜 License
@@ -269,7 +269,7 @@ This program is free software, you can redistribute it and/or modify it under th
 https://dev.perl.org/licenses/artistic.html
 
 ## Contact
-Questions and bug reports to ngraham@cpan.org
+Questions and bug reports to fapulito@gmail.com
 
 ## TODO 
 - [ ] Add support for tournaments
