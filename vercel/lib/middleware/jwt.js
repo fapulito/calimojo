@@ -56,7 +56,6 @@ const jwtAuth = (req, res, next) => {
   try {
     // Check for token in headers, query, or cookies
     const token = req.headers.authorization?.split(' ')[1]
-      || req.query.token
       || req.cookies.token;
 
     if (!token) {

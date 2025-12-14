@@ -33,7 +33,8 @@ router.get('/active', authenticate, async (req, res) => {
 router.get('/history', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
-    const limit = parseInt(req.query.limit) || 10;
+    const limitRaw = Number.parseInt(req.query.limit, 10);
+    const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 100) : 10;
 
     const sessionHistory = await Session.getSessionHistory(userId, limit);
 

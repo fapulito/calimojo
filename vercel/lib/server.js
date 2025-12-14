@@ -213,8 +213,14 @@ server.listen(PORT, async () => {
   console.log(`🎮 WebSocket Game Server: Online`);
 
   // Test database connection and initialize tables
-  await testDatabaseConnection();
-  await initializeDatabase();
+  try {
+    await testDatabaseConnection();
+    await initializeDatabase();
+  } catch (error) {
+    console.error('⚠️ Database initialization failed:', error);
+    console.error('⚠️ Server is running but database features will not work');
+    // Optionally: process.exit(1); if DB is critical
+  }
 });
 
 module.exports = { app, server, gameServer };
