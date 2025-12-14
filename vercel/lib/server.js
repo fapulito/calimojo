@@ -205,8 +205,14 @@ app.listen(PORT, async () => {
   console.log(`Facebook Auth: ${process.env.FACEBOOK_APP_ID ? 'Configured' : 'Not configured'}`);
 
   // Test database connection and initialize tables
-  await testDatabaseConnection();
-  await initializeDatabase();
+  try {
+    await testDatabaseConnection();
+    await initializeDatabase();
+  } catch (error) {
+    console.error('⚠️ Database initialization failed:', error);
+    console.error('⚠️ Server is running but database features will not work');
+    // Optionally: process.exit(1); if DB is critical
+  }
 });
 
 module.exports = app;
