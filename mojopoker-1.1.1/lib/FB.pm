@@ -1011,7 +1011,6 @@ sub _add_house_players {
     my $house_player2 = $self->db->fetch_user({username => 'HousePlayer2'});
 
     if ($house_player1) {
-
         # Create proper mock WebSocket object for house player
         my $mock_ws = FB::Login::WebSocket::Mock->new(
             remote_address => '127.0.0.1'
@@ -1034,7 +1033,6 @@ sub _add_house_players {
     }
 
     if ($house_player2) {
-
         # Create proper mock WebSocket object for house player
         my $mock_ws = FB::Login::WebSocket::Mock->new(
             remote_address => '127.0.0.1'
