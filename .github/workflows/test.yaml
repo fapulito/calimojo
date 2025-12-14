@@ -1,0 +1,48 @@
+name: Test Migration Script
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: mojopoker_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Perl
+        uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: '5.36'
+      
+      - name: Install dependencies
+        run: |
+          cpanm --installdeps --notest .
+          cpanm Test::More Test::Exception Test::MockModule Test::Output
+      
+      - name: Setup PostgreSQL schema
+        env:
+          PGPASSWORD: testpassword
+        run: |
+          psql -h localhost -U postgres -d mojopoker_test -f mojopoker-1.1.1/db/postgres.schema
+      
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql://postgres:testpassword@localhost:5432/mojopoker_test
+          RUN_INTEGRATION_TESTS: 1
+        run: |
+          cd mojopoker-1.1.1
+          prove -v t/
