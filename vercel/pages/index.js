@@ -9,6 +9,12 @@ const PokerMain = dynamic(() => import('../components/PokerMain'), {
   loading: () => <div className={styles.loading}>Loading poker interface...</div>
 })
 
+/**
+ * Render the homepage and display the PokerMain interface once the Facebook SDK and initial setup are ready.
+ *
+ * Renders a loading UI (including a spinner and informational text) until both the component's initialization and the Facebook SDK are detected, then renders the dynamically loaded PokerMain component. Also sets page metadata in the document head and displays footer links.
+ * @returns {JSX.Element} The React element tree for the home page; shows PokerMain when ready, otherwise a loading screen.
+ */
 export default function Home() {
   const [isLoaded, setIsLoaded] = useState(false)
   const [facebookLoaded, setFacebookLoaded] = useState(false)

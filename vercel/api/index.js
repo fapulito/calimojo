@@ -12,6 +12,17 @@ const app = express();
 
 // WebSocket server setup
 let wss;
+/**
+ * Initialize a WebSocketServer attached to the given HTTP server and register handlers for connections, messages, closes, and errors.
+ *
+ * Message handling:
+ * - Expects incoming messages as JSON.
+ * - If `type` is `"join_game"`, responds with a `"game_ready"` message containing `gameId` and `userId`.
+ * - For other messages, responds with an `"acknowledgment"` including the original message.
+ * - On parse or processing errors, responds with an `"error"` message indicating an invalid message format.
+ *
+ * @param {import('http').Server} server - The HTTP server to bind the WebSocketServer to.
+ */
 function setupWebSocketServer(server) {
   wss = new WebSocketServer({ server });
 

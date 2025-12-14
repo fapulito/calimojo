@@ -1,5 +1,17 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
+/**
+ * Handle Facebook authentication POST requests.
+ *
+ * Validates that the request is a POST and that `authResponse` exists in the request body,
+ * then constructs user data from `authResponse` and returns a JSON response.
+ * Responds with 405 for non-POST requests, 400 if `authResponse` is missing,
+ * 200 on successful processing with `{ success: true, user, message }`,
+ * and 500 on unexpected errors with `{ error, details }`.
+ *
+ * @param {import('next').NextApiRequest} req - Incoming API request; expects `authResponse` in `req.body`.
+ * @param {import('next').NextApiResponse} res - API response used to send status and JSON payloads.
+ */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
@@ -44,7 +56,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 }
 
-// Helper function to verify Facebook signed request
+/**
+ * Validate a Facebook `signed_request` and extract its metadata.
+ * @param {string} signedRequest - The raw `signed_request` value received from Facebook.
+ * @param {string} appSecret - The Facebook app secret used to verify the signature.
+ * @returns {{isValid: boolean, userId: string, algorithm: string}} An object containing validation results: `isValid` — `true` if the signed request's signature is valid, `false` otherwise; `userId` — the decoded Facebook user ID; `algorithm` — the signature algorithm.
+ */
 function verifySignedRequest(signedRequest, appSecret) {
   // This would be implemented in a production environment
   // using the Facebook app secret to verify the signature

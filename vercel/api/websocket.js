@@ -17,6 +17,16 @@ module.exports = function handler(req, res) {
   });
 };
 
+/**
+ * Upgrade an incoming HTTP request to a WebSocket connection and attach handlers for connection lifecycle and incoming messages.
+ *
+ * Initializes a module-scoped WebSocketServer (noServer: true) if not already created, attaches handlers that parse JSON messages,
+ * respond to a `join_game` message with a `game_ready` payload, acknowledge other messages, and send an `error` message for invalid JSON.
+ * Finally, performs the WebSocket upgrade using the response socket and emits the `connection` event.
+ *
+ * @param {import('http').IncomingMessage} req - The HTTP request to upgrade.
+ * @param {import('http').ServerResponse} res - The HTTP response whose socket will be used for the upgrade.
+ */
 function handleWebSocketUpgrade(req, res) {
   // Initialize WebSocket server if not already done
   if (!wss) {

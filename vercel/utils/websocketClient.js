@@ -180,10 +180,10 @@ class WebSocketClient {
 }
 
 /**
- * Create a WebSocket connection (convenience function)
- * @param {string} url - WebSocket server URL
- * @param {Object} options - Connection options
- * @returns {WebSocketClient}
+ * Create a WebSocketClient for the specified WebSocket server URL.
+ * @param {string} url - WebSocket server URL.
+ * @param {Object} [options] - Connection options.
+ * @returns {WebSocketClient} The created WebSocketClient instance.
  */
 export function createWebSocketClient(url, options = {}) {
   return new WebSocketClient(url, options);
