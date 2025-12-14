@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 use feature qw(say);
-use lib './lib';
+use lib './lib', '/home/a520m/perl5/lib/perl5', '/home/a520m/perl5/lib/perl5/x86_64-linux-thread-multi';
 use Ships;
 use EV;
 use Mojo::Server::Daemon;

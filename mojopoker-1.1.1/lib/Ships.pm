@@ -46,14 +46,14 @@ sub startup {
   #my $b = $r->under('/')->to( controller => 'auth', action => 'block' );
   my $b = $r->under( sub { return 1 } ); # don't block anyone
   $b->websocket('/websocket')->to( controller => 'websocket', action => 'service' );
-  $b->route('/')->to( controller => 'main', action => 'default' );
-  #$r->route('/book/:bookmark')->to( controller => 'main', action => 'book' );
-  $r->route('/privacy')->to( controller => 'main', action => 'privacy' );
-  $r->route('/terms')->to( controller => 'main', action => 'terms' );
-  $r->route('/leaderboard')->to( controller => 'main', action => 'leader' );
-  $r->route('/deletion')->to( controller => 'main', action => 'deletion' );
+  $b->get('/')->to( controller => 'main', action => 'default' );
+  #$r->get('/book/:bookmark')->to( controller => 'main', action => 'book' );
+  $r->get('/privacy')->to( controller => 'main', action => 'privacy' );
+  $r->get('/terms')->to( controller => 'main', action => 'terms' );
+  $r->get('/leaderboard')->to( controller => 'main', action => 'leader' );
+  $r->get('/deletion')->to( controller => 'main', action => 'deletion' );
   $r->post('/delete')->to(controller => 'main', action => 'delete');
-  $r->route('*')->to(cb => sub { shift->redirect_to('/') });
+  $r->any('*')->to(cb => sub { shift->redirect_to('/') });
 }
 
 1;
