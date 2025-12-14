@@ -73,7 +73,7 @@ sub connect_postgres {
 
     my $dbh = DBI->connect($config->{postgres_url}, "", "", {
         RaiseError => 1,
-        AutoCommit => 1,
+        AutoCommit => 0,  # Disable AutoCommit for proper transaction control
         pg_enable_utf8 => 1,
     }) or die "Cannot connect to PostgreSQL database: $DBI::errstr";
 
@@ -97,8 +97,13 @@ sub migrate_users {
 
     return if $config->{dry_run};
 
-    # Prepare PostgreSQL insert statement
-    my $insert_stmt = $postgres_db->prepare(<<'END_SQL');
+    # Start PostgreSQL transaction
+    eval {
+        # Begin transaction
+        $postgres_db->begin_work;
+
+        # Prepare PostgreSQL insert statement with COALESCE for timestamp handling
+        my $insert_stmt = $postgres_db->prepare(<<'END_SQL');
 INSERT INTO users (
     id, facebook_id, username, password, email, birthday, handle,
     first_name, last_name, profile_pic, chips, invested, level,
@@ -106,7 +111,9 @@ INSERT INTO users (
 ) VALUES (
     ?, ?, ?, ?, ?, ?, ?,
     ?, ?, ?, ?, ?, ?,
-    ?, ?, ?
+    COALESCE(?, CURRENT_TIMESTAMP),
+    COALESCE(?, CURRENT_TIMESTAMP),
+    COALESCE(?, CURRENT_TIMESTAMP)
 )
 ON CONFLICT (id) DO UPDATE SET
     facebook_id = EXCLUDED.facebook_id,
@@ -125,25 +132,36 @@ ON CONFLICT (id) DO UPDATE SET
     updated_at = CURRENT_TIMESTAMP
 END_SQL
 
-    # Migrate each user
-    foreach my $user (@$users) {
-        # Convert SQLite timestamp format to PostgreSQL format
-        my $last_visit = $user->{last_visit} || 'CURRENT_TIMESTAMP';
-        my $created_at = $user->{created_at} || 'CURRENT_TIMESTAMP';
-        my $updated_at = $user->{updated_at} || 'CURRENT_TIMESTAMP';
+        # Migrate each user within the transaction
+        foreach my $user (@$users) {
+            # Use undef for NULL values - let PostgreSQL handle defaults
+            # The INSERT statement will use COALESCE to handle NULL timestamps
+            my $last_visit = $user->{last_visit};
+            my $created_at = $user->{created_at};
+            my $updated_at = $user->{updated_at};
 
-        $insert_stmt->execute(
-            $user->{id}, $user->{facebook_id}, $user->{username},
-            $user->{password}, $user->{email}, $user->{birthday},
-            $user->{handle}, $user->{first_name}, $user->{last_name},
-            $user->{profile_pic}, $user->{chips}, $user->{invested},
-            $user->{level}, $last_visit, $created_at, $updated_at
-        );
+            $insert_stmt->execute(
+                $user->{id}, $user->{facebook_id}, $user->{username},
+                $user->{password}, $user->{email}, $user->{birthday},
+                $user->{handle}, $user->{first_name}, $user->{last_name},
+                $user->{profile_pic}, $user->{chips}, $user->{invested},
+                $user->{level}, $last_visit, $created_at, $updated_at
+            );
 
-        print "Migrated user: $user->{username} (ID: $user->{id})\n" if $config->{verbose};
+            print "Migrated user: $user->{username} (ID: $user->{id})\n" if $config->{verbose};
+        }
+
+        # Commit transaction if all inserts succeed
+        $postgres_db->commit;
+        print "Users migration completed successfully within transaction\n";
+    };
+
+    # Handle any errors and rollback transaction
+    if ($@) {
+        warn "Error during user migration: $@";
+        eval { $postgres_db->rollback };
+        die "User migration failed. Transaction has been rolled back.\n";
     }
-
-    print "Users migration completed\n";
 }
 
 sub show_help {

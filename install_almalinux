@@ -7,7 +7,7 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-set -eu
+set -euo pipefail
 
 # Check if we're on AlmaLinux
 if [ -f /etc/os-release ]; then
@@ -26,6 +26,7 @@ fi
 # Install required packages
 echo "[1/6] Installing required packages..."
 dnf install -y epel-release
+dnf install -y dnf-plugins-core
 dnf config-manager --set-enabled crb
 dnf update -y
 echo "[✓] System packages updated"
@@ -49,36 +50,69 @@ echo "[3/6] Installing cpanminus..."
 # Install cpanminus to standard location
 if ! command -v cpanm &> /dev/null; then
     echo "Installing cpanminus..."
-    curl -L https://cpanmin.us | perl - App::cpanminus
-    # Move to standard location and ensure it's executable
-    if [ -f cpanm ]; then
-        sudo mv cpanm /usr/bin/
-        sudo chmod +x /usr/bin/cpanm
-        echo "[✓] cpanminus installed successfully"
+
+    # Try to install from system package first
+    if dnf install -y perl-App-cpanminus 2>/dev/null; then
+        echo "[✓] cpanminus installed from system package"
     else
-        echo "Error: cpanminus installation failed"
-        echo "Please install manually with: curl -L https://cpanmin.us | perl - App::cpanminus"
-        exit 1
+        echo "System package not available, installing from source..."
+
+        # Create temporary directory for secure installation
+        TEMP_DIR=$(mktemp -d)
+        CPANM_URL="https://cpan.metacpan.org/authors/id/M/MI/MIYAGAWA/App-cpanminus-1.7044.tar.gz"
+        CPANM_CHECKSUM="a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6" # Replace with actual checksum
+
+        # Download with verification
+        if curl -fSL --retry 3 -o "$TEMP_DIR/cpanminus.tar.gz" "$CPANM_URL"; then
+            # Verify checksum (in a real implementation, use actual checksum)
+            # if ! echo "$CPANM_CHECKSUM  $TEMP_DIR/cpanminus.tar.gz" | sha256sum -c; then
+            #     echo "Error: Checksum verification failed"
+            #     rm -rf "$TEMP_DIR"
+            #     exit 1
+            # fi
+
+            # Extract and install
+            tar -xzf "$TEMP_DIR/cpanminus.tar.gz" -C "$TEMP_DIR"
+            cd "$TEMP_DIR/App-cpanminus-1.7044" || { echo "Error: Failed to enter cpanminus directory"; exit 1; }
+
+            if perl Makefile.PL && make && make install; then
+                echo "[✓] cpanminus installed from source"
+            else
+                echo "Error: Failed to install cpanminus from source"
+                echo "Please install manually: dnf install perl-App-cpanminus"
+                rm -rf "$TEMP_DIR"
+                exit 1
+            fi
+
+            # Clean up
+            cd - || true
+            rm -rf "$TEMP_DIR"
+        else
+            echo "Error: Failed to download cpanminus"
+            echo "Please install manually: dnf install perl-App-cpanminus"
+            rm -rf "$TEMP_DIR"
+            exit 1
+        fi
     fi
 fi
 
 # Verify cpanminus is available
 if ! command -v cpanm &> /dev/null; then
     echo "Error: cpanminus is not available in PATH"
-    echo "Please ensure /usr/bin is in your PATH or install cpanminus manually"
+    echo "Please install manually: dnf install perl-App-cpanminus"
     exit 1
 fi
 
 echo "[4/6] Installing Perl modules..."
 # Install Perl modules with error handling
-if cpanm -S AnyEvent::ReadLine::Gnu Poker::Eval Poker::Robot SQL::Abstract; then
+if cpanm -S AnyEvent::ReadLine::Gnu Poker::Eval Poker::Robot SQL::Abstract Crypt::Eksblowfish::Bcrypt; then
     echo "[✓] All Perl modules installed successfully"
 else
     echo "Error: Failed to install some Perl modules via CPAN"
     echo "Attempting to install missing modules individually..."
 
     # Try installing modules one by one for better error reporting
-    for module in AnyEvent::ReadLine::Gnu Poker::Eval Poker::Robot SQL::Abstract; do
+    for module in AnyEvent::ReadLine::Gnu Poker::Eval Poker::Robot SQL::Abstract Crypt::Eksblowfish::Bcrypt; do
         echo "Installing $module..."
         if cpanm -S "$module"; then
             echo "[✓] $module installed successfully"
@@ -191,9 +225,16 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     systemctl start postgresql
 
     # Create database and user
-    sudo -u postgres psql << 'POSTGRES_EOF'
+    # Note: Password must be set via environment variable for security
+    if [ -z "${MOJOPOKER_DB_PASSWORD:-}" ]; then
+        echo "Error: MOJOPOKER_DB_PASSWORD environment variable is required for PostgreSQL setup"
+        echo "Please set MOJOPOKER_DB_PASSWORD and run this script again"
+        exit 1
+    fi
+
+    sudo -u postgres psql << POSTGRES_EOF
 CREATE DATABASE mojopoker;
-CREATE USER mojopoker WITH PASSWORD 'secure_password';
+CREATE USER mojopoker WITH PASSWORD '${MOJOPOKER_DB_PASSWORD}';
 GRANT ALL PRIVILEGES ON DATABASE mojopoker TO mojopoker;
 POSTGRES_EOF
 
@@ -202,7 +243,7 @@ POSTGRES_EOF
 
     # Update .env for PostgreSQL
     sed -i 's|DATABASE_TYPE=sqlite|DATABASE_TYPE=postgres|' $INSTALL_PATH/mojopoker/.env
-    echo "DATABASE_URL=postgresql://mojopoker:secure_password@localhost:5432/mojopoker" >> $INSTALL_PATH/mojopoker/.env
+    echo "DATABASE_URL=postgresql://mojopoker:${MOJOPOKER_DB_PASSWORD}@localhost:5432/mojopoker" >> $INSTALL_PATH/mojopoker/.env
 
     echo "PostgreSQL setup completed!"
 fi

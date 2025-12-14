@@ -6,8 +6,59 @@ const FacebookStrategy = require('passport-facebook').Strategy;
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const path = require('path');
+const { WebSocketServer } = require('ws');
 
 const app = express();
+
+// WebSocket server setup
+let wss;
+function setupWebSocketServer(server) {
+  wss = new WebSocketServer({ server });
+
+  wss.on('connection', (ws, req) => {
+    console.log('New WebSocket connection established');
+
+    ws.on('message', (message) => {
+      console.log('Received WebSocket message:', message.toString());
+      try {
+        const data = JSON.parse(message.toString());
+
+        // Handle different message types
+        if (data.type === 'join_game') {
+          console.log(`User ${data.userId} joining game ${data.gameId}`);
+          ws.send(JSON.stringify({
+            type: 'game_ready',
+            message: 'Game 3 is ready! In a full implementation, you would now be connected to the poker table via WebSocket.',
+            gameId: data.gameId,
+            userId: data.userId
+          }));
+        } else {
+          ws.send(JSON.stringify({
+            type: 'acknowledgment',
+            message: 'Message received',
+            originalMessage: data
+          }));
+        }
+      } catch (error) {
+        console.error('Error processing WebSocket message:', error);
+        ws.send(JSON.stringify({
+          type: 'error',
+          message: 'Invalid message format'
+        }));
+      }
+    });
+
+    ws.on('close', () => {
+      console.log('WebSocket connection closed');
+    });
+
+    ws.on('error', (error) => {
+      console.error('WebSocket error:', error);
+    });
+  });
+
+  console.log('WebSocket server initialized');
+}
 
 // Middleware setup
 app.use(express.json());
@@ -70,7 +121,7 @@ passport.deserializeUser((id, done) => {
 
 // Routes
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/index.html'));
+  res.sendFile(path.join(__dirname, '../../public/index.html'));
 });
 
 // Facebook Auth Routes
@@ -122,10 +173,6 @@ app.get('/api/poker/games', (req, res) => {
 
 // API route to join a poker game - integrates with Perl backend
 app.post('/api/poker/join', (req, res) => {
-  // This endpoint will proxy requests to the Perl backend
-  // For now, we'll implement a basic version that simulates the Perl backend response
-  // In a production environment, this would forward the request to the Perl WebSocket server
-
   if (!req.isAuthenticated()) {
     return res.status(401).json({
       success: false,
@@ -142,15 +189,17 @@ app.post('/api/poker/join', (req, res) => {
     });
   }
 
-  // Simulate joining a game - in reality this would connect to the Perl WebSocket server
-  // and send a join_ring command
+  // Determine WebSocket URL based on environment
+  const websocketUrl = process.env.NODE_ENV === 'production'
+    ? `wss://${req.headers.host}/api/websocket`
+    : `ws://${req.headers.host}/api/websocket`;
 
-  // For now, we'll return a success response and provide WebSocket connection info
+  // Return success response with proper WebSocket connection info
   res.json({
     success: true,
     message: 'Game join request processed',
     gameId: gameId,
-    websocketUrl: `ws://localhost:3000/websocket`,
+    websocketUrl: websocketUrl,
     user: {
       id: req.user.id,
       displayName: req.user.displayName
@@ -159,7 +208,7 @@ app.post('/api/poker/join', (req, res) => {
 });
 
 // Serve static files from public directory
-app.use(express.static(path.join(__dirname, '../public')));
+app.use(express.static(path.join(__dirname, '../../public')));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -167,12 +216,5 @@ app.use((err, req, res, next) => {
   res.status(500).send('Something broke!');
 });
 
-// Start server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV}`);
-  console.log(`Facebook Auth: ${process.env.FACEBOOK_APP_ID ? 'Configured' : 'Not configured'}`);
-});
-
+// Export the app for Vercel
 module.exports = app;

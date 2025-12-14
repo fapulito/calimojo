@@ -30,7 +30,7 @@ CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 -- Login sessions table
 CREATE TABLE IF NOT EXISTS logins (
     id VARCHAR(50) PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     remote_address VARCHAR(50),
     last_req_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     first_req_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS logins (
 -- Leaderboard table
 CREATE TABLE IF NOT EXISTS leaderboard (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     profit_percentage DECIMAL(10,2) DEFAULT 0.00,
     chips INTEGER DEFAULT 0,
     games_played INTEGER DEFAULT 0,
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS leaderboard (
 -- Game tables
 CREATE TABLE IF NOT EXISTS tables_ring (
     id SERIAL PRIMARY KEY,
-    director_id INTEGER REFERENCES users(id),
+    director_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     game_class VARCHAR(50) NOT NULL,
     limit_type VARCHAR(20) NOT NULL,
     small_blind INTEGER DEFAULT 0,
@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS tables_ring (
 -- Tournament tables
 CREATE TABLE IF NOT EXISTS tables_tour (
     id SERIAL PRIMARY KEY,
-    director_id INTEGER REFERENCES users(id),
+    director_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     game_class VARCHAR(50) NOT NULL,
     limit_type VARCHAR(20) NOT NULL,
     small_blind INTEGER DEFAULT 0,
@@ -90,7 +90,7 @@ CREATE TABLE IF NOT EXISTS tables_tour (
 CREATE TABLE IF NOT EXISTS chat_messages (
     id SERIAL PRIMARY KEY,
     channel VARCHAR(50) NOT NULL,
-    from_user_id INTEGER REFERENCES users(id),
+    from_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     message TEXT NOT NULL,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -98,7 +98,7 @@ CREATE TABLE IF NOT EXISTS chat_messages (
 -- User statistics
 CREATE TABLE IF NOT EXISTS user_stats (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     games_played INTEGER DEFAULT 0,
     hands_won INTEGER DEFAULT 0,
     hands_lost INTEGER DEFAULT 0,
@@ -162,6 +162,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION update_last_updated()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.last_updated = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE TRIGGER update_users_timestamp
 BEFORE UPDATE ON users
 FOR EACH ROW
@@ -170,7 +178,7 @@ EXECUTE FUNCTION update_timestamp();
 CREATE TRIGGER update_leaderboard_timestamp
 BEFORE UPDATE ON leaderboard
 FOR EACH ROW
-EXECUTE FUNCTION update_timestamp();
+EXECUTE FUNCTION update_last_updated();
 
 CREATE TRIGGER update_tables_ring_timestamp
 BEFORE UPDATE ON tables_ring
@@ -181,3 +189,8 @@ CREATE TRIGGER update_tables_tour_timestamp
 BEFORE UPDATE ON tables_tour
 FOR EACH ROW
 EXECUTE FUNCTION update_timestamp();
+
+CREATE TRIGGER update_user_stats_timestamp
+BEFORE UPDATE ON user_stats
+FOR EACH ROW
+EXECUTE FUNCTION update_last_updated();

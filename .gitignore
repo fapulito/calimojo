@@ -1,0 +1,7 @@
+*.pid
+*.db
+*.log
+.env
+node_modules/
+dist/
+build/

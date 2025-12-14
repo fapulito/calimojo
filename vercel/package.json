@@ -2,7 +2,7 @@
   "name": "mojo-poker-vercel",
   "version": "1.0.0",
   "description": "Mojo Poker application adapted for Vercel deployment",
-  "main": "lib/server.js",
+  "main": "api/index.js",
   "scripts": {
     "start": "node lib/server.js",
     "dev": "nodemon lib/server.js",
@@ -17,13 +17,13 @@
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",
-    "ejs": "^3.1.9"
+    "ejs": "^3.1.9",
+    "ws": "^8.13.0"
   },
   "devDependencies": {
     "nodemon": "^2.0.22"
   },
   "engines": {
     "node": ">=16.x"
-
   }
 }

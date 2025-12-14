@@ -9,7 +9,8 @@ use feature qw(state);
 use FB::Db;
 use SQL::Abstract;
 use Mojo::JSON qw(j);
-use Digest::SHA qw(hmac_sha1_hex hmac_sha256);
+use Digest::SHA qw(hmac_sha256);
+use Crypt::Eksblowfish::Bcrypt qw(bcrypt en_base64);
 use FB::Poker;
 use FB::Chat;
 use FB::Login;
@@ -261,9 +262,12 @@ sub validate {
         }
     }
 
-    # hash password
-    $opts->{password} = hmac_sha1_hex( $opts->{password}, $self->secret )
-      if $opts->{password};
+    # hash password with bcrypt (proper password hashing)
+    if ($opts->{password}) {
+        # Generate bcrypt hash with cost factor 12
+        my $salt = bcrypt_gensalt(cost => 12);
+        $opts->{password} = bcrypt($opts->{password}, $salt);
+    }
 
     return $opts;
 }
