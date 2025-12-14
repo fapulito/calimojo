@@ -11,6 +11,7 @@ const databaseRouter = require('../api/database');
 const jwtRouter = require('../api/auth/jwt');
 const sessionsRouter = require('../api/sessions');
 const { trackSession, checkMultiDeviceSessions } = require('../lib/middleware/sessionTracker');
+const GameServer = require('../lib/websocket/GameServer');
 
 const app = express();
 
@@ -197,16 +198,23 @@ app.use((err, req, res, next) => {
   res.status(500).send('Something broke!');
 });
 
+// Create HTTP server for WebSocket integration
+const server = require('http').createServer(app);
+
+// Initialize WebSocket game server
+const gameServer = new GameServer(server);
+
 // Start server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, async () => {
+server.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV}`);
   console.log(`Facebook Auth: ${process.env.FACEBOOK_APP_ID ? 'Configured' : 'Not configured'}`);
+  console.log(`🎮 WebSocket Game Server: Online`);
 
   // Test database connection and initialize tables
   await testDatabaseConnection();
   await initializeDatabase();
 });
 
-module.exports = app;
+module.exports = { app, server, gameServer };

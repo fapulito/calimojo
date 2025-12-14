@@ -126,6 +126,9 @@
         </div>
     </div>
 
+    <!-- Socket.IO Client Library -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+
     <!-- Facebook SDK -->
     <div id="fb-root"></div>
     <script>
@@ -202,7 +205,54 @@
         }
 
         function joinGame(gameId) {
-            alert(`Joining game ${gameId} - This functionality would be implemented in a full version`);
+            // Get the button element that was clicked
+            const joinButton = event.target;
+            const originalText = joinButton.textContent;
+
+            // Show loading state
+            joinButton.textContent = 'Joining...';
+            joinButton.disabled = true;
+
+            // Connect to WebSocket server
+            const socket = io('http://localhost:3000', {
+                reconnection: true,
+                reconnectionAttempts: 3,
+                reconnectionDelay: 1000
+            });
+
+            // Handle connection errors
+            socket.on('connect_error', function(error) {
+                console.error('WebSocket connection error:', error);
+                alert('Failed to connect to game server. Please try again.');
+                joinButton.textContent = originalText;
+                joinButton.disabled = false;
+            });
+
+            // Join the game via WebSocket
+            socket.emit('join_game', gameId);
+
+            // Handle successful join
+            socket.on('player_joined', function(data) {
+                console.log('Successfully joined game:', data);
+                alert('Successfully joined game! Redirecting to game table...');
+                // Redirect to game table
+                window.location.href = `/game.html?gameId=${gameId}`;
+            });
+
+            // Handle errors
+            socket.on('error', function(error) {
+                console.error('Failed to join game:', error);
+                alert(`Failed to join game: ${error.error}`);
+                joinButton.textContent = originalText;
+                joinButton.disabled = false;
+            });
+
+            // Clean up event listeners after 10 seconds to prevent memory leaks
+            setTimeout(function() {
+                socket.off('player_joined');
+                socket.off('error');
+                socket.off('connect_error');
+            }, 10000);
         }
     </script>
 </body>

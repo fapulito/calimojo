@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Game Join Functionality</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-container {
+            background-color: #f5f5f5;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        .log {
+            background-color: #2c3e50;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-bottom: 1px solid #34495e;
+        }
+        .success {
+            color: #27ae60;
+        }
+        .error {
+            color: #e74c3c;
+        }
+        .info {
+            color: #f39c12;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎮 Test Game Join Functionality</h1>
+
+    <div class="test-container">
+        <h2>Test WebSocket Game Joining</h2>
+        <p>This page tests the WebSocket game joining functionality.</p>
+
+        <div>
+            <label for="gameId">Game ID:</label>
+            <input type="text" id="gameId" value="test_game_123" style="padding: 8px; width: 200px; margin: 10px;">
+        </div>
+
+        <button id="joinGameBtn" onclick="testJoinGame()">Join Game</button>
+        <button id="createGameBtn" onclick="testCreateGame()">Create Game</button>
+    </div>
+
+    <div class="log" id="log">
+        <div class="log-entry info">📋 Test ready. Click buttons to test functionality.</div>
+    </div>
+
+    <script>
+        // Global socket variable
+        let socket = null;
+
+        function addLog(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = message;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function testJoinGame() {
+            const gameId = document.getElementById('gameId').value;
+            const joinButton = document.getElementById('joinGameBtn');
+            const originalText = joinButton.textContent;
+
+            // Disable buttons during test
+            joinButton.textContent = 'Testing...';
+            joinButton.disabled = true;
+            document.getElementById('createGameBtn').disabled = true;
+
+            addLog(`🔌 Connecting to WebSocket server...`, 'info');
+
+            // Connect to WebSocket server
+            socket = io('http://localhost:3000', {
+                reconnection: true,
+                reconnectionAttempts: 3,
+                reconnectionDelay: 1000
+            });
+
+            // Connection events
+            socket.on('connect', function() {
+                addLog(`✅ WebSocket connected successfully`, 'success');
+            });
+
+            socket.on('connect_error', function(error) {
+                addLog(`❌ WebSocket connection error: ${error.message}`, 'error');
+                joinButton.textContent = originalText;
+                joinButton.disabled = false;
+                document.getElementById('createGameBtn').disabled = false;
+            });
+
+            // Join the game
+            addLog(`🎮 Attempting to join game: ${gameId}`, 'info');
+            socket.emit('join_game', gameId);
+
+            // Handle successful join
+            socket.on('player_joined', function(data) {
+                addLog(`🎉 Successfully joined game! Data: ${JSON.stringify(data)}`, 'success');
+                joinButton.textContent = originalText;
+                joinButton.disabled = false;
+                document.getElementById('createGameBtn').disabled = false;
+            });
+
+            // Handle errors
+            socket.on('error', function(error) {
+                addLog(`❌ Failed to join game: ${error.error}`, 'error');
+                joinButton.textContent = originalText;
+                joinButton.disabled = false;
+                document.getElementById('createGameBtn').disabled = false;
+            });
+
+            // Clean up after 15 seconds
+            setTimeout(function() {
+                if (socket) {
+                    socket.off('player_joined');
+                    socket.off('error');
+                    socket.off('connect_error');
+                    socket.off('connect');
+                }
+            }, 15000);
+        }
+
+        function testCreateGame() {
+            const createButton = document.getElementById('createGameBtn');
+            const originalText = createButton.textContent;
+
+            // Disable buttons during test
+            createButton.textContent = 'Creating...';
+            createButton.disabled = true;
+            document.getElementById('joinGameBtn').disabled = true;
+
+            addLog(`🎮 Creating new game...`, 'info');
+
+            // Connect to WebSocket server
+            socket = io('http://localhost:3000', {
+                reconnection: true,
+                reconnectionAttempts: 3,
+                reconnectionDelay: 1000
+            });
+
+            // Connection events
+            socket.on('connect', function() {
+                addLog(`✅ WebSocket connected successfully`, 'success');
+            });
+
+            socket.on('connect_error', function(error) {
+                addLog(`❌ WebSocket connection error: ${error.message}`, 'error');
+                createButton.textContent = originalText;
+                createButton.disabled = false;
+                document.getElementById('joinGameBtn').disabled = false;
+            });
+
+            // Create game
+            socket.emit('create_game', {
+                smallBlind: 10,
+                bigBlind: 20,
+                startingChips: 1000
+            });
+
+            // Handle game creation response
+            socket.on('game_created', function(data) {
+                addLog(`🎉 Game created successfully! Game ID: ${data.gameId}`, 'success');
+                addLog(`Game data: ${JSON.stringify(data)}`, 'info');
+                createButton.textContent = originalText;
+                createButton.disabled = false;
+                document.getElementById('joinGameBtn').disabled = false;
+
+                // Update game ID field with the new game ID
+                document.getElementById('gameId').value = data.gameId;
+            });
+
+            // Handle errors
+            socket.on('error', function(error) {
+                addLog(`❌ Failed to create game: ${error.error}`, 'error');
+                createButton.textContent = originalText;
+                createButton.disabled = false;
+                document.getElementById('joinGameBtn').disabled = false;
+            });
+
+            // Clean up after 15 seconds
+            setTimeout(function() {
+                if (socket) {
+                    socket.off('game_created');
+                    socket.off('error');
+                    socket.off('connect_error');
+                    socket.off('connect');
+                }
+            }, 15000);
+        }
+    </script>
+</body>
+</html>

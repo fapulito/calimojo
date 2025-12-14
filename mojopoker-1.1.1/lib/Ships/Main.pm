@@ -13,15 +13,16 @@ sub default {
     $url->scheme('wss') if $self->req->headers->header('X-Forwarded-For');
     my $opts = 'ws: "' . $url->to_abs . '"';
 
-    $self->stash( 
+    $self->stash(
        opts => $opts,
-       facebook_app_id => $self->app->facebook_app_id, 
+       facebook_app_id => $self->app->facebook_app_id,
     );
 
     $self->render(
         template => 'main',
         format   => 'html',
         handler  => 'ep',
+        layout   => 0,  # Render standalone - template contains complete HTML
     );
 }
 
@@ -31,6 +32,7 @@ sub terms {
         template => 'terms',
         format   => 'html',
         handler  => 'ep',
+        layout   => 0,  # Render standalone - template contains complete HTML
     );
 }
 
@@ -40,6 +42,7 @@ sub privacy {
         template => 'privacy',
         format   => 'html',
         handler  => 'ep',
+        layout   => 0,  # Render standalone - template contains complete HTML
     );
 }
 
@@ -49,6 +52,7 @@ sub leader {
         template => 'leader',
         format   => 'html',
         handler  => 'ep',
+        layout   => 0,  # Render standalone - template contains complete HTML
     );
 }
 
@@ -119,6 +123,7 @@ SQL
         template => 'deletion',
         format   => 'html',
         handler  => 'ep',
+        layout   => 0,  # Render standalone - template contains complete HTML
     );
 }
 
@@ -138,8 +143,8 @@ sub book {
         template => 'main',
         format   => 'html',
         handler  => 'ep',
+        layout   => 0,  # Render standalone - template contains complete HTML
     );
 }
 
 1;
-

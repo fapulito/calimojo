@@ -2,6 +2,8 @@
 .env
 *.env
 !.env.example
+# Perl environment files
+mojopoker-1.1.1/.env
 
 # Runtime files
 *.pid

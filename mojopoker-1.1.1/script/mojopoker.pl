@@ -3,7 +3,11 @@
 use strict;
 use warnings;
 use feature qw(say);
-use lib './lib', '/home/a520m/perl5/lib/perl5', '/home/a520m/perl5/lib/perl5/x86_64-linux-thread-multi';
+use lib './lib';
+
+# For external dependencies, set PERL5LIB environment variable or use local::lib
+# Example: export PERL5LIB="/path/to/your/perl5/lib:$PERL5LIB"
+# Or install local::lib: cpanm local::lib && eval $(perl -I$HOME/perl5/lib/perl5/ -Mlocal::lib)
 use Ships;
 use EV;
 use Mojo::Server::Daemon;

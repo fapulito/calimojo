@@ -9,9 +9,11 @@ use Digest::SHA qw(hmac_sha1_hex);
 
 #use Data::Dumper;
 
-has 'secret' => ( 
-   is => 'rw', 
-   default => sub { return 'g)ue(ss# %m4e &i@f y25o*u c*69an' }, 
+has 'secret' => (
+    is      => 'rw',
+    default => sub {
+        return $ENV{SESSION_SECRET} || die 'SESSION_SECRET environment variable not set';
+    },
 );
 
 has 'dbh' => ( 

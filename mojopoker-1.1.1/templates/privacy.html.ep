@@ -11,10 +11,12 @@
             font-family: Arial, sans-serif;
             line-height: 1.6;
             color: #333;
+            background-color: #f9f9f9;
+        }
+        .page-container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
-            background-color: #f9f9f9;
         }
         .privacy-container {
             background-color: white;
@@ -61,7 +63,8 @@
     </style>
 </head>
 <body>
-    <div class="privacy-container">
+    <div class="page-container">
+        <div class="privacy-container">
         <h1>Mojopoker Privacy Policy</h1>
         <p class="last-updated">Last Updated: December 14, 2025</p>
 
@@ -310,5 +313,6 @@
 
         <p>This Privacy Policy is designed to be compliant with Facebook's requirements for apps that use Facebook Login and access user data. For more information about Facebook's data practices, please refer to Facebook's Data Policy.</p>
     </div>
+        </div>
 </body>
 </html>

@@ -363,7 +363,7 @@ class HandEvaluator {
         }
         break;
 
-      case 'High Card':
+      case 'High Card': {
         // Use the top 5 cards
         const topCards = cards.slice(0, 5);
         for (let i = 0; i < topCards.length; i++) {
@@ -373,6 +373,7 @@ class HandEvaluator {
           handValue += rankValue << (16 - i * 4);
         }
         break;
+      }
     }
 
     return handValue;
@@ -382,67 +383,77 @@ class HandEvaluator {
    * Get human-readable hand description
    */
   static _getHandDescription(handRank, cards) {
+    // Cache rank counts to avoid repeated computation
+    const rankCounts = this._getRankCounts(cards);
+
     switch (handRank.name) {
       case 'Royal Flush':
         return `Royal Flush (${cards[0].suit})`;
 
-      case 'Straight Flush':
+      case 'Straight Flush': {
         const rankOrder = { '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8,
                            '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14 };
         const highCard = Object.keys(rankOrder).find(
           key => rankOrder[key] === handRank.highRank);
         return `Straight Flush (${highCard} high, ${cards[0].suit})`;
+      }
 
-      case 'Four of a Kind':
-        const quadRank = Object.keys(this._getRankCounts(cards)).find(
-          rank => this._getRankCounts(cards)[rank] === 4);
-        const kickerRank = Object.keys(this._getRankCounts(cards)).find(
-          rank => this._getRankCounts(cards)[rank] === 1);
+      case 'Four of a Kind': {
+        const quadRank = Object.keys(rankCounts).find(
+          rank => rankCounts[rank] === 4);
+        const kickerRank = Object.keys(rankCounts).find(
+          rank => rankCounts[rank] === 1);
         return `Four of a Kind (${quadRank}s with ${kickerRank} kicker)`;
+      }
 
-      case 'Full House':
-        const tripletRank = Object.keys(this._getRankCounts(cards)).find(
-          rank => this._getRankCounts(cards)[rank] === 3);
-        const pairRank = Object.keys(this._getRankCounts(cards)).find(
-          rank => this._getRankCounts(cards)[rank] === 2);
-        return `Full House (${tripletRank}s full of ${pairRank}s)`;
+      case 'Full House': {
+        const tripletRankKey = Object.keys(rankCounts).find(
+          rank => rankCounts[rank] === 3);
+        const pairRankKey = Object.keys(rankCounts).find(
+          rank => rankCounts[rank] === 2);
+        return `Full House (${tripletRankKey}s full of ${pairRankKey}s)`;
+      }
 
       case 'Flush':
         return `Flush (${cards[0].suit}, ${cards[0].rank} high)`;
 
-      case 'Straight':
-        const straightHighCard = Object.keys(this._getRankCounts(cards))
+      case 'Straight': {
+        const straightHighCard = Object.keys(rankCounts)
           .map(rank => parseInt(rank))
           .sort((a, b) => b - a)[0];
         const rankNames = { 14: 'A', 13: 'K', 12: 'Q', 11: 'J', 10: 'T', 9: '9', 8: '8',
                            7: '7', 6: '6', 5: '5', 4: '4', 3: '3', 2: '2' };
         const highCardName = rankNames[straightHighCard] || straightHighCard;
         return `Straight (${highCardName} high)`;
+      }
 
-      case 'Three of a Kind':
-        const tripletRank = Object.keys(this._getRankCounts(cards)).find(
-          rank => this._getRankCounts(cards)[rank] === 3);
+      case 'Three of a Kind': {
+        const tripletRank = Object.keys(rankCounts).find(
+          rank => rankCounts[rank] === 3);
         return `Three of a Kind (${tripletRank}s)`;
+      }
 
-      case 'Two Pair':
-        const highPair = Object.keys(this._getRankCounts(cards))
-          .filter(rank => this._getRankCounts(cards)[rank] === 2)
+      case 'Two Pair': {
+        const highPair = Object.keys(rankCounts)
+          .filter(rank => rankCounts[rank] === 2)
           .map(rank => parseInt(rank))
           .sort((a, b) => b - a)[0];
-        const lowPair = Object.keys(this._getRankCounts(cards))
-          .filter(rank => this._getRankCounts(cards)[rank] === 2)
+        const lowPair = Object.keys(rankCounts)
+          .filter(rank => rankCounts[rank] === 2)
           .map(rank => parseInt(rank))
           .sort((a, b) => b - a)[1];
-        const rankNames = { 14: 'A', 13: 'K', 12: 'Q', 11: 'J', 10: 'T', 9: '9', 8: '8',
+        const rankNames2 = { 14: 'A', 13: 'K', 12: 'Q', 11: 'J', 10: 'T', 9: '9', 8: '8',
                            7: '7', 6: '6', 5: '5', 4: '4', 3: '3', 2: '2' };
-        const highPairName = rankNames[highPair] || highPair;
-        const lowPairName = rankNames[lowPair] || lowPair;
+        const highPairName = rankNames2[highPair] || highPair;
+        const lowPairName = rankNames2[lowPair] || lowPair;
         return `Two Pair (${highPairName}s and ${lowPairName}s)`;
+      }
 
-      case 'One Pair':
-        const pairRank = Object.keys(this._getRankCounts(cards)).find(
-          rank => this._getRankCounts(cards)[rank] === 2);
+      case 'One Pair': {
+        const pairRank = Object.keys(rankCounts).find(
+          rank => rankCounts[rank] === 2);
         return `One Pair (${pairRank}s)`;
+      }
 
       case 'High Card':
         return `High Card (${cards[0].rank} high)`;
@@ -456,14 +467,14 @@ class HandEvaluator {
    * Compare two hand evaluation results
    * @param {Object} hand1 - First hand evaluation
    * @param {Object} hand2 - Second hand evaluation
-   * @returns {number} -1 if hand1 < hand2, 0 if equal, 1 if hand1 > hand2
+   * @returns {number} Positive if hand1 > hand2, 0 if equal, negative if hand1 < hand2
    */
   static compareHands(hand1, hand2) {
     if (hand1.handRank !== hand2.handRank) {
-      return hand2.handRank - hand1.handRank; // Higher rank wins
+      return hand1.handRank - hand2.handRank; // Positive = hand1 wins
     }
 
-    return hand1.handValue - hand2.handValue; // Higher value wins
+    return hand1.handValue - hand2.handValue; // Positive = hand1 wins
   }
 }
 

@@ -67,7 +67,9 @@ has 'max_idle' => (
 
 has 'secret' => (
     is      => 'rw',
-    default => sub { return 'g)ue(ss# %m4e &i@f y25o*u c*69an' },
+    default => sub {
+        return $ENV{SESSION_SECRET} || die 'SESSION_SECRET environment variable not set';
+    },
 );
 
 has 'start_time' => (
