@@ -7,6 +7,8 @@ const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const path = require('path');
 const { WebSocketServer } = require('ws');
+const { createServer } = require('http');
+const facebookAuthRouter = require('./auth/facebook');
 
 const app = express();
 
@@ -207,6 +209,9 @@ app.post('/api/poker/join', (req, res) => {
   });
 });
 
+// Mount the Facebook auth router
+app.use('/api/auth/facebook', facebookAuthRouter);
+
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, '../../public')));
 
@@ -216,5 +221,19 @@ app.use((err, req, res, next) => {
   res.status(500).send('Something broke!');
 });
 
-// Export the app for Vercel
-module.exports = app;
+// Create HTTP server for Vercel
+const server = createServer(app);
+
+// Initialize WebSocket server
+setupWebSocketServer(server);
+
+// Start server - this will be handled by Vercel
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV}`);
+  console.log(`Facebook Auth: ${process.env.FACEBOOK_APP_ID ? 'Configured' : 'Not configured'}`);
+});
+
+// Export the server for Vercel
+module.exports = server;

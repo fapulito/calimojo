@@ -1,10 +1,8 @@
-import { NextApiRequest, NextApiResponse } from 'next'
+const express = require('express');
+const router = express.Router();
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' })
-  }
-
+// Facebook authentication endpoint
+router.post('/', async (req, res) => {
   try {
     const { authResponse } = req.body
 
@@ -62,7 +60,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       details: error.message
     })
   }
-}
+});
 
 // Helper function to verify Facebook signed request
 function verifySignedRequest(signedRequest, appSecret) {
@@ -78,3 +76,5 @@ function verifySignedRequest(signedRequest, appSecret) {
     algorithm: 'HMAC-SHA256'
   }
 }
+
+module.exports = router;
