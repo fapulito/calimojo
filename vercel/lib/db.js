@@ -68,7 +68,11 @@ const sessionStore = new pgSession({
   // schemaName: 'public'
 });
 
-// Test database connection
+/**
+ * Checks whether the PostgreSQL database is reachable.
+ *
+ * @returns {boolean} `true` if a test query succeeded (connection healthy), `false` otherwise.
+ */
 async function testDatabaseConnection() {
   try {
     await pool.query('SELECT NOW()');
@@ -80,7 +84,12 @@ async function testDatabaseConnection() {
   }
 }
 
-// Initialize database tables if they don't exist
+/**
+ * Creates the core database tables (sessions, users, games, player_games) if they do not exist.
+ *
+ * Executes SQL DDL statements to ensure required tables and constraints are present.
+ * @returns {Promise<boolean>} `true` if all table creation statements completed successfully, `false` otherwise.
+ */
 async function initializeDatabase() {
   try {
     // Create sessions table if it doesn't exist
