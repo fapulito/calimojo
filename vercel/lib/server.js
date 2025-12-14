@@ -58,14 +58,35 @@ passport.serializeUser((user, done) => {
   done(null, user.id);
 });
 
+// In-memory user store for session management
+const userStore = new Map();
+
+// Store user in memory when they authenticate
+passport.serializeUser((user, done) => {
+  // Store the full user object in memory for session restoration
+  userStore.set(user.id, user);
+  done(null, user.id);
+});
+
 passport.deserializeUser((id, done) => {
-  // Here you would typically look up the user by id in your database
-  const user = {
-    id: id,
-    displayName: 'Facebook User',
-    // In a real app, you would fetch this from your database
-  };
-  done(null, user);
+  try {
+    // First try to get user from in-memory store (for session restoration)
+    if (userStore.has(id)) {
+      const user = userStore.get(id);
+      console.log(`[AUTH] User ${id} found in session store, restoring session`);
+      return done(null, user);
+    }
+
+    // If not in memory store, this might be a new session or server restart
+    // In a production app, you would query your database here
+    // For now, we'll return false to indicate user not found
+    console.log(`[AUTH] User with id ${id} not found in session store (likely server restart or new session)`);
+    return done(null, false);
+  } catch (error) {
+    // Handle any lookup errors
+    console.error('[AUTH] Error deserializing user:', error);
+    done(error);
+  }
 });
 
 // Routes

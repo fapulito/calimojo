@@ -60,16 +60,9 @@ if ! command -v cpanm &> /dev/null; then
         # Create temporary directory for secure installation
         TEMP_DIR=$(mktemp -d)
         CPANM_URL="https://cpan.metacpan.org/authors/id/M/MI/MIYAGAWA/App-cpanminus-1.7044.tar.gz"
-        CPANM_CHECKSUM="a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6" # Replace with actual checksum
 
         # Download with verification
         if curl -fSL --retry 3 -o "$TEMP_DIR/cpanminus.tar.gz" "$CPANM_URL"; then
-            # Verify checksum (in a real implementation, use actual checksum)
-            # if ! echo "$CPANM_CHECKSUM  $TEMP_DIR/cpanminus.tar.gz" | sha256sum -c; then
-            #     echo "Error: Checksum verification failed"
-            #     rm -rf "$TEMP_DIR"
-            #     exit 1
-            # fi
 
             # Extract and install
             tar -xzf "$TEMP_DIR/cpanminus.tar.gz" -C "$TEMP_DIR"
@@ -105,14 +98,14 @@ fi
 
 echo "[4/6] Installing Perl modules..."
 # Install Perl modules with error handling
-if cpanm -S AnyEvent::ReadLine::Gnu Poker::Eval Poker::Robot SQL::Abstract Crypt::Eksblowfish::Bcrypt; then
+if cpanm -S AnyEvent::ReadLine::Gnu Poker::Eval Poker::Robot SQL::Abstract Crypt::Eksblowfish::Bcrypt Test::More Test::Exception Test::MockModule Test::Output; then
     echo "[✓] All Perl modules installed successfully"
 else
     echo "Error: Failed to install some Perl modules via CPAN"
     echo "Attempting to install missing modules individually..."
 
     # Try installing modules one by one for better error reporting
-    for module in AnyEvent::ReadLine::Gnu Poker::Eval Poker::Robot SQL::Abstract Crypt::Eksblowfish::Bcrypt; do
+    for module in AnyEvent::ReadLine::Gnu Poker::Eval Poker::Robot SQL::Abstract Crypt::Eksblowfish::Bcrypt Test::More Test::Exception Test::MockModule Test::Output; do
         echo "Installing $module..."
         if cpanm -S "$module"; then
             echo "[✓] $module installed successfully"
