@@ -1,0 +1,13 @@
+# Environment variables
+.env
+*.env
+!.env.example
+
+# Runtime files
+*.pid
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log

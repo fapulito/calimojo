@@ -1,6 +1,7 @@
 ![Mojo Poker Logo](/mojopoker-1.1.1/public/img/logo.png)
 
-[![Build Status](https://api.travis-ci.com/nathanielgraham/Mojo-Poker.svg?branch=master)]
+[![Build Status](https://api.travis-ci.com/nathanielgraham/Mojo-Poker.svg?branch=master)](https://api.travis-ci.com/nathanielgraham/Mojo-Poker)
+[![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/fapulito/calimojo?utm_source=oss&utm_medium=github&utm_campaign=fapulito%2Fcalimojo&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)](https://coderabbit.ai)
 
 # Mojopoker - Refactored and Enhanced
 
