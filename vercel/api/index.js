@@ -123,7 +123,7 @@ passport.deserializeUser((id, done) => {
 
 // Routes
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '../../public/index.html'));
+  res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
 // Facebook Auth Routes
@@ -213,7 +213,7 @@ app.post('/api/poker/join', (req, res) => {
 app.use('/api/auth/facebook', facebookAuthRouter);
 
 // Serve static files from public directory
-app.use(express.static(path.join(__dirname, '../../public')));
+app.use(express.static(path.join(__dirname, '../public')));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
