@@ -58,35 +58,14 @@ passport.serializeUser((user, done) => {
   done(null, user.id);
 });
 
-// In-memory user store for session management
-const userStore = new Map();
-
-// Store user in memory when they authenticate
-passport.serializeUser((user, done) => {
-  // Store the full user object in memory for session restoration
-  userStore.set(user.id, user);
-  done(null, user.id);
-});
-
 passport.deserializeUser((id, done) => {
-  try {
-    // First try to get user from in-memory store (for session restoration)
-    if (userStore.has(id)) {
-      const user = userStore.get(id);
-      console.log(`[AUTH] User ${id} found in session store, restoring session`);
-      return done(null, user);
-    }
-
-    // If not in memory store, this might be a new session or server restart
-    // In a production app, you would query your database here
-    // For now, we'll return false to indicate user not found
-    console.log(`[AUTH] User with id ${id} not found in session store (likely server restart or new session)`);
-    return done(null, false);
-  } catch (error) {
-    // Handle any lookup errors
-    console.error('[AUTH] Error deserializing user:', error);
-    done(error);
-  }
+  // Here you would typically look up the user by id in your database
+  const user = {
+    id: id,
+    displayName: 'Facebook User',
+    // In a real app, you would fetch this from your database
+  };
+  done(null, user);
 });
 
 // Routes
@@ -134,48 +113,10 @@ app.get('/api/poker/games', (req, res) => {
   // In a real implementation, this would return available poker games
   res.json({
     games: [
-      { id: 1, name: "Texas Hold'em", players: '2-10', type: 'ring' },
+      { id: 1, name: 'Texas Hold'em', players: '2-10', type: 'ring' },
       { id: 2, name: 'Omaha Hi-Lo', players: '2-9', type: 'ring' },
       { id: 3, name: '7 Card Stud', players: '2-8', type: 'ring' }
     ]
-  });
-});
-
-// API route to join a poker game - integrates with Perl backend
-app.post('/api/poker/join', (req, res) => {
-  // This endpoint will proxy requests to the Perl backend
-  // For now, we'll implement a basic version that simulates the Perl backend response
-  // In a production environment, this would forward the request to the Perl WebSocket server
-
-  if (!req.isAuthenticated()) {
-    return res.status(401).json({
-      success: false,
-      message: 'You must be logged in to join a game'
-    });
-  }
-
-  const { gameId } = req.body;
-
-  if (!gameId) {
-    return res.status(400).json({
-      success: false,
-      message: 'Game ID is required'
-    });
-  }
-
-  // Simulate joining a game - in reality this would connect to the Perl WebSocket server
-  // and send a join_ring command
-
-  // For now, we'll return a success response and provide WebSocket connection info
-  res.json({
-    success: true,
-    message: 'Game join request processed',
-    gameId: gameId,
-    websocketUrl: `ws://localhost:3000/websocket`,
-    user: {
-      id: req.user.id,
-      displayName: req.user.displayName
-    }
   });
 });
 

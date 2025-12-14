@@ -185,43 +185,14 @@
                     gameList.innerHTML = '';
 
                     data.games.forEach(game => {
-                        // Create game card using safe DOM manipulation
                         const gameCard = document.createElement('div');
                         gameCard.className = 'game-card';
-
-                        // Create and append title (safe textContent)
-                        const title = document.createElement('h3');
-                        title.textContent = game.name;
-                        gameCard.appendChild(title);
-
-                        // Create and append type info (safe textContent)
-                        const typePara = document.createElement('p');
-                        const typeStrong = document.createElement('strong');
-                        typeStrong.textContent = 'Type:';
-                        typePara.appendChild(typeStrong);
-                        typePara.appendChild(document.createTextNode(' ' + game.type));
-                        gameCard.appendChild(typePara);
-
-                        // Create and append players info (safe textContent)
-                        const playersPara = document.createElement('p');
-                        const playersStrong = document.createElement('strong');
-                        playersStrong.textContent = 'Players:';
-                        playersPara.appendChild(playersStrong);
-                        playersPara.appendChild(document.createTextNode(' ' + game.players));
-                        gameCard.appendChild(playersPara);
-
-                        // Create and append button with safe event listener
-                        const joinButton = document.createElement('button');
-                        joinButton.className = 'btn';
-                        joinButton.style.backgroundColor = '#3498db';
-                        joinButton.textContent = 'Join Game';
-
-                        // Use addEventListener instead of inline onclick
-                        joinButton.addEventListener('click', () => {
-                            joinGame(game.id);
-                        });
-
-                        gameCard.appendChild(joinButton);
+                        gameCard.innerHTML = `
+                            <h3>${game.name}</h3>
+                            <p><strong>Type:</strong> ${game.type}</p>
+                            <p><strong>Players:</strong> ${game.players}</p>
+                            <button class="btn" style="background-color: #3498db;" onclick="joinGame(${game.id})">Join Game</button>
+                        `;
                         gameList.appendChild(gameCard);
                     });
                 })
@@ -231,51 +202,7 @@
         }
 
         function joinGame(gameId) {
-            // Check if user is authenticated first
-            fetch('/api/auth/status')
-                .then(response => response.json())
-                .then(authData => {
-                    if (!authData.authenticated) {
-                        alert('Please login with Facebook to join a game');
-                        return;
-                    }
-
-                    // Call the new API endpoint to join the game
-                    fetch('/api/poker/join', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ gameId: gameId })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            alert(`Successfully joined game ${gameId}! Connecting to game server...`);
-                            console.log('Game join successful:', data);
-
-                            // In a full implementation, this would establish a WebSocket connection
-                            // to the Perl backend and redirect to the game interface
-                            // For now, we'll just show a success message
-
-                            // Show game connection instructions
-                            setTimeout(() => {
-                                alert(`Game ${gameId} is ready! In a full implementation, you would now be connected to the poker table via WebSocket.`);
-                            }, 1000);
-                        } else {
-                            alert(`Failed to join game: ${data.message || 'Unknown error'}`);
-                            console.error('Game join failed:', data);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error joining game:', error);
-                        alert('Error joining game. Please try again.');
-                    });
-                })
-                .catch(error => {
-                    console.error('Error checking authentication:', error);
-                    alert('Error checking authentication. Please refresh the page.');
-                });
+            alert(`Joining game ${gameId} - This functionality would be implemented in a full version`);
         }
     </script>
 </body>

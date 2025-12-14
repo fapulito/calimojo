@@ -341,8 +341,14 @@
   color: #FFF;
 }
 
+.stack .chip5000000 {
+  background-image: url("/img/chips/chip-500000000.png");
+}
 .stack .chip1000000 {
   background-image: url("/img/chips/chip-100000000.png");
+}
+.stack .chip500000 {
+  background-image: url("/img/chips/chip-50000000.png");
 }
 .stack .chip10000000 {
   background-image: url("/img/chips/chip-10000000.png");
@@ -475,40 +481,36 @@
 }
 
 .table[chair-count='10'] .seat[pos='1'] .button {
-  left: 72%;
-  top: 67%;
+  left: 74%;
+  top: 56%;
 }
 .table[chair-count='10'] .seat[pos='2'] .button {
   left: 74%;
-  top: 53%;
+  top: 56%;
 }
 .table[chair-count='10'] .seat[pos='3'] .button {
   left: 74%;
-  top: 30%;
+  top: 56%;
 }
 .table[chair-count='10'] .seat[pos='4'] .button {
   left: 74%;
-  top: 16%;
-}
-.table[chair-count='10'] .seat[pos='5'] .button {
-  left: 38%;
-  top: 24%;
+  top: 56%;
 }
 .table[chair-count='10'] .seat[pos='6'] .button {
-  left: 67%;
-  top: 16%;
+  left: 74%;
+  top: 56%;
 }
 .table[chair-count='10'] .seat[pos='7'] .button {
   left: 74%;
-  top: 30%;
+  top: 56%;
 }
 .table[chair-count='10'] .seat[pos='8'] .button {
   left: 74%;
-  top: 53%;
+  top: 56%;
 }
 .table[chair-count='10'] .seat[pos='9'] .button {
   left: 74%;
-  top: 67%;
+  top: 56%;
 }
 
 .seat .seated-clear {
@@ -1114,3 +1116,4 @@
   left: 79%;
 }
 */
+
