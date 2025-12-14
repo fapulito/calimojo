@@ -3,6 +3,15 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Script from 'next/script'
 
+/**
+ * Custom Next.js App component that injects global jQuery scripts and initializes the Facebook SDK on client mount.
+ *
+ * Initializes the Facebook SDK once after the component mounts using `NEXT_PUBLIC_FACEBOOK_APP_ID` and
+ * `NEXT_PUBLIC_FACEBOOK_API_VERSION`, then renders the provided page component.
+ *
+ * @param {{ Component: import('next').NextPage, pageProps: any }} props - Next.js App props.
+ * @returns {JSX.Element} The rendered page component with global scripts injected.
+ */
 function MyApp({ Component, pageProps }) {
   const router = useRouter()
 

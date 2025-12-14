@@ -9,6 +9,12 @@ const PokerMain = dynamic(() => import('../components/PokerMain'), {
   loading: () => <div className={styles.loading}>Loading poker interface...</div>
 })
 
+/**
+ * Render the Mojo Poker home page and show a loading state until the Facebook SDK and client-side game component are ready.
+ *
+ * On mount, polls for the Facebook SDK and updates local state to control whether the client-only PokerMain component is rendered or a loading UI is shown.
+ * @returns {JSX.Element} The rendered home page element.
+ */
 export default function Home() {
   const [isLoaded, setIsLoaded] = useState(false)
   const [facebookLoaded, setFacebookLoaded] = useState(false)
