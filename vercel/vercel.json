@@ -1,64 +1,24 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
+
   "version": 2,
-  "buildCommand": "npm install && npm run build",
-  "installCommand": "npm install",
-  "outputDirectory": ".next",
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/node"
+    }
+  ],
   "routes": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api/$1",
-      "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+      "src": "/api/.*",
+      "dest": "lib/server.js"
     },
     {
-      "src": "/websocket",
-      "dest": "http://localhost:3000/websocket",
-      "methods": ["GET"],
-      "continue": true
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1",
-      "methods": ["GET", "HEAD"]
+      "src": "/.*",
+      "dest": "lib/server.js"
     }
   ],
   "env": {
-    "FACEBOOK_APP_ID": "@facebook-app-id",
-    "FACEBOOK_APP_SECRET": "@facebook-app-secret",
-    "DATABASE_URL": "@database-url",
-    "WS_URL": "wss://[VERCEL_URL]/websocket",
-    "API_URL": "https://[VERCEL_URL]/api"
-  },
-  "rewrites": [
-    {
-      "source": "/websocket",
-      "destination": "http://localhost:3000/websocket"
-    }
-  ],
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        },
-        {
-          "key": "X-Frame-Options",
-          "value": "DENY"
-        },
-        {
-          "key": "X-XSS-Protection",
-          "value": "1; mode=block"
-        }
-      ]
-    }
-  ],
-  "cleanUrls": true,
-  "trailingSlash": false,
-  "images": {
-    "domains": ["localhost", "[VERCEL_URL]"],
-    "minimumCacheTTL": 60,
-    "formats": ["image/avif", "image/webp"]
+    "NODE_ENV": "production"
+
   }
 }

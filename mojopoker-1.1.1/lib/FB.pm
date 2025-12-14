@@ -14,6 +14,7 @@ use FB::Poker;
 use FB::Chat;
 use FB::Login;
 use FB::Login::WebSocket;
+use FB::Login::WebSocket::Mock;
 use FB::User;
 use Time::Piece;
 use Time::Seconds;
@@ -523,7 +524,6 @@ sub _update_all_logins {
     }
 }
 
-
 sub _fetch_login_info {
     my ( $self, $login ) = @_;
     my $info = $self->_fetch_user_info($login);
@@ -1011,17 +1011,11 @@ sub _add_house_players {
     my $house_player2 = $self->db->fetch_user({username => 'HousePlayer2'});
 
     if ($house_player1) {
-        # Create a mock WebSocket object for house player
-        my $mock_ws = {
-            remote_address => '127.0.0.1',
-            send => sub {
-                # Mock send method - just log for house players
-                # print "House player send: " . $_[1] . "\n";
-            },
-            finish => sub {
-                # Mock finish method
-            }
-        };
+
+        # Create proper mock WebSocket object for house player
+        my $mock_ws = FB::Login::WebSocket::Mock->new(
+            remote_address => '127.0.0.1'
+        );
 
         # Create house login with mock WebSocket
         my $house_login1 = FB::Login::WebSocket->new({
@@ -1040,17 +1034,11 @@ sub _add_house_players {
     }
 
     if ($house_player2) {
-        # Create a mock WebSocket object for house player
-        my $mock_ws = {
-            remote_address => '127.0.0.1',
-            send => sub {
-                # Mock send method - just log for house players
-                # print "House player send: " . $_[1] . "\n";
-            },
-            finish => sub {
-                # Mock finish method
-            }
-        };
+
+        # Create proper mock WebSocket object for house player
+        my $mock_ws = FB::Login::WebSocket::Mock->new(
+            remote_address => '127.0.0.1'
+        );
 
         # Create house login with mock WebSocket
         my $house_login2 = FB::Login::WebSocket->new({
