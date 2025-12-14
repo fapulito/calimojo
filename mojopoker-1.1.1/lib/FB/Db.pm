@@ -20,7 +20,7 @@ has 'dbh' => (
 );
 
 sub _build_dbh {
-    return DBI->connect( "dbi:SQLite:dbname=/opt/mojopoker/db/fb.db", "", "" );
+    return DBI->connect( "dbi:SQLite:dbname=./db/fb.db", "", "" );
 }
 
 has 'sql' => (

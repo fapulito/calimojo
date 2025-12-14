@@ -944,7 +944,129 @@ sub BUILD {
             $self->cycle300;
         }
     );
+
+    # Create test tables with house players on startup
+    $self->_create_test_tables();
+}
+
+sub _create_test_tables {
+    my $self = shift;
+
+    # Create a Texas Hold'em table
+    my $table_opts = {
+        table_id => $self->table_count + 1,
+        chair_count => 6,
+        game_class => 'holdem',
+        limit => 'NL',
+        small_blind => 1,
+        big_blind => 2,
+        auto_start => 1,
+        db => $self->db,
+    };
+
+    my $table = $self->table_maker->ring_table($table_opts);
+    if ($table) {
+        $self->table_list->{ $table->table_id } = $table;
+        $self->table_count($self->table_count + 1);
+
+        # Add house players to the table
+        $self->_add_house_players($table);
+
+        $self->_notify_lobby(
+            [ 'notify_create_ring', $self->_fetch_table_opts($table) ]
+        );
+    }
+
+    # Create an Omaha table
+    $table_opts = {
+        table_id => $self->table_count + 1,
+        chair_count => 6,
+        game_class => 'omaha',
+        limit => 'PL',
+        small_blind => 1,
+        big_blind => 2,
+        auto_start => 1,
+        db => $self->db,
+    };
+
+    $table = $self->table_maker->ring_table($table_opts);
+    if ($table) {
+        $self->table_list->{ $table->table_id } = $table;
+        $self->table_count($self->table_count + 1);
+
+        # Add house players to the table
+        $self->_add_house_players($table);
+
+        $self->_notify_lobby(
+            [ 'notify_create_ring', $self->_fetch_table_opts($table) ]
+        );
+    }
+}
+
+sub _add_house_players {
+    my ($self, $table) = @_;
+
+    # Get house players from database
+    my $house_player1 = $self->db->fetch_user({username => 'HousePlayer1'});
+    my $house_player2 = $self->db->fetch_user({username => 'HousePlayer2'});
+
+    if ($house_player1) {
+        # Create a mock WebSocket object for house player
+        my $mock_ws = {
+            remote_address => '127.0.0.1',
+            send => sub {
+                # Mock send method - just log for house players
+                # print "House player send: " . $_[1] . "\n";
+            },
+            finish => sub {
+                # Mock finish method
+            }
+        };
+
+        # Create house login with mock WebSocket
+        my $house_login1 = FB::Login::WebSocket->new({
+            id => 'house1_' . $table->table_id,
+            websocket => $mock_ws,
+            db => $self->db,
+        });
+        $house_login1->user($house_player1);
+        $self->login_list->{$house_login1->id} = $house_login1;
+
+        # Join the table with chips
+        $table->join($house_login1, {
+            chair => 0,
+            chips => 200,
+        });
+    }
+
+    if ($house_player2) {
+        # Create a mock WebSocket object for house player
+        my $mock_ws = {
+            remote_address => '127.0.0.1',
+            send => sub {
+                # Mock send method - just log for house players
+                # print "House player send: " . $_[1] . "\n";
+            },
+            finish => sub {
+                # Mock finish method
+            }
+        };
+
+        # Create house login with mock WebSocket
+        my $house_login2 = FB::Login::WebSocket->new({
+            id => 'house2_' . $table->table_id,
+            websocket => $mock_ws,
+            db => $self->db,
+        });
+        $house_login2->user($house_player2);
+        $self->login_list->{$house_login2->id} = $house_login2;
+
+        # Join the table with chips
+        $table->join($house_login2, {
+            chair => 1,
+            chips => 200,
+        });
+    }
 }
 
 1;
-

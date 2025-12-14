@@ -1,0 +1,42 @@
+{
+  "name": "mojopoker-vercel",
+  "version": "1.0.0",
+  "description": "Mojo Poker Vercel Deployment",
+  "main": "index.js",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "prepare": "husky install"
+  },
+  "keywords": ["poker", "facebook", "gaming", "vercel"],
+  "author": "Mojo Poker Team",
+  "license": "MIT",
+  "dependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "autoprefixer": "^10.0.0",
+    "eslint": "^8.0.0",
+    "eslint-config-next": "^14.0.0",
+    "next": "^14.0.0",
+    "postcss": "^8.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "swr": "^2.0.0",
+    "tailwindcss": "^3.0.0",
+    "typescript": "^5.0.0",
+    "websocket": "^1.0.34",
+    "axios": "^1.0.0",
+    "jquery": "^3.7.1",
+    "jquery-ui": "^1.13.2"
+  },
+  "devDependencies": {
+    "husky": "^8.0.0",
+    "lint-staged": "^13.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -12,11 +12,11 @@ has 'address_info' => sub {
 };
 
 has facebook_app_id => sub {
-   return '431502190982449';
+   return $ENV{FACEBOOK_APP_ID} || '431502190982449';
 };
 
 has facebook_secret => sub {
-   return 'dee98631a540b933dd8e2f46e1ab9512';
+   return $ENV{FACEBOOK_APP_SECRET} || 'dee98631a540b933dd8e2f46e1ab9512';
 };
 
 has fb => sub {
@@ -46,14 +46,14 @@ sub startup {
   #my $b = $r->under('/')->to( controller => 'auth', action => 'block' );
   my $b = $r->under( sub { return 1 } ); # don't block anyone
   $b->websocket('/websocket')->to( controller => 'websocket', action => 'service' );
-  $b->route('/')->to( controller => 'main', action => 'default' );
+  $b->get('/')->to( controller => 'main', action => 'default' );
   #$r->route('/book/:bookmark')->to( controller => 'main', action => 'book' );
-  $r->route('/privacy')->to( controller => 'main', action => 'privacy' );
-  $r->route('/terms')->to( controller => 'main', action => 'terms' );
-  $r->route('/leaderboard')->to( controller => 'main', action => 'leader' );
-  $r->route('/deletion')->to( controller => 'main', action => 'deletion' );
+  $r->get('/privacy')->to( controller => 'main', action => 'privacy' );
+  $r->get('/terms')->to( controller => 'main', action => 'terms' );
+  $r->get('/leaderboard')->to( controller => 'main', action => 'leader' );
+  $r->get('/deletion')->to( controller => 'main', action => 'deletion' );
   $r->post('/delete')->to(controller => 'main', action => 'delete');
-  $r->route('*')->to(cb => sub { shift->redirect_to('/') });
+  $r->any('*')->to(cb => sub { shift->redirect_to('/') });
 }
 
 1;

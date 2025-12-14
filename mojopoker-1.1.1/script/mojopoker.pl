@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 use feature qw(say);
-use lib '/opt/mojopoker/lib';
+use lib './lib', '/home/a520m/perl5/lib/perl5';
 use Ships;
 use EV;
 use Mojo::Server::Daemon;
