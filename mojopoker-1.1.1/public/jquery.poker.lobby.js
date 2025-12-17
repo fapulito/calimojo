@@ -323,16 +323,117 @@
 
         },
         _check_login_status: function() {
+            var v = this;
+            // Check if user is already logged in (has username/chips displayed)
+            if (v.options.myData && v.options.myData.username) {
+                // Already logged in, set up logout button
+                $("#lobby-loginout").removeClass("login").addClass("logout").off('click').click(function() {
+                    $("#poker-main").main("logout");
+                });
+                return;
+            }
+
             FB.getLoginStatus(function(res) {
                 if (res.status == 'connected') {
                     $("#poker-main").main("authorize", res);
                 } else {
+                   // Add local login option
                    $("#lobby-loginout").removeClass("logout").addClass("login").off('click').click(function() {
-                      FB.login(function(r) {
-                         $("#poker-main").main("authorize", r);
-                      });
+                      v._show_local_login();
                    });
                 }
+            });
+        },
+
+        _show_local_login: function() {
+            var v = this;
+            var dialog = $("<div />").attr("id", "local-login-dialog").html(`
+                <div style="padding: 10px;">
+                    <h3>Local Login</h3>
+                    <p>Username: <input type="text" id="local-username" value="testuser"></p>
+                    <p>Bookmark: <input type="password" id="local-bookmark" value="8bc55bb6f39c7fc446dccac859e5e2749821ba80"></p>
+                    <p><button id="local-login-btn">Login</button> or <button id="local-register-btn">Register</button></p>
+                    <p style="font-size: smaller; color: #666;">Use testuser/8bc55bb6f39c7fc446dccac859e5e2749821ba80 for testing</p>
+                </div>
+            `);
+
+            $("#modal-box").empty().append(dialog);
+            $("#modal-box").dialog({
+                title: "Local Login",
+                position: {
+                    my: "center",
+                    at: "center",
+                    of: window
+                },
+                modal: true,
+                width: 400,
+                buttons: [{
+                    text: "Close",
+                    click: function() {
+                        $(this).dialog("close");
+                    }
+                }]
+            });
+
+            $("#local-login-btn").click(function() {
+                var username = $("#local-username").val();
+                var bookmark = $("#local-bookmark").val();
+                $("#poker-main").main("login_book", { bookmark: bookmark });
+                $("#modal-box").dialog("close");
+            });
+
+            $("#local-register-btn").click(function() {
+                v._show_registration();
+            });
+        },
+
+        _show_registration: function() {
+            var v = this;
+            var dialog = $("<div />").attr("id", "local-register-dialog").html(`
+                <div style="padding: 10px;">
+                    <h3>Register New User</h3>
+                    <p>Username: <input type="text" id="reg-username"></p>
+                    <p>Password: <input type="password" id="reg-password"></p>
+                    <p>Email: <input type="email" id="reg-email"></p>
+                    <p><button id="reg-submit-btn">Register</button></p>
+                </div>
+            `);
+
+            $("#modal-box").empty().append(dialog);
+            $("#modal-box").dialog({
+                title: "Register",
+                position: {
+                    my: "center",
+                    at: "center",
+                    of: window
+                },
+                modal: true,
+                width: 400,
+                buttons: [{
+                    text: "Close",
+                    click: function() {
+                        $(this).dialog("close");
+                    }
+                }]
+            });
+
+            $("#reg-submit-btn").click(function() {
+                var username = $("#reg-username").val();
+                var password = $("#reg-password").val();
+                var email = $("#reg-email").val();
+
+                if (!username || !password || !email) {
+                    alert("Please fill in all fields");
+                    return;
+                }
+
+                $("#poker-main").main("register", {
+                    username: username,
+                    password: password,
+                    email: email,
+                    handle: username
+                });
+                $("#modal-box").dialog("close");
             });
         },
         modal_message: function(message) {
@@ -363,12 +464,16 @@
             //this.options.myData = f;
             $("#lobby-name").show();
             $("#lobby-chips").show();
-            e._update_lobby(f)
-            //alert(JSON.stringify(f));
-            //e._buildCashier();
-            //g.find("#lobby-login").html("Cashier").off("click").click(function() {
-            //    $("#poker-main").main("login_info")
-            //});
+            e._update_lobby(f);
+
+            // Show welcome message and instructions
+            e.modal_message("Welcome " + f.username + "! You have " + f.chips + " chips. Click 'Auto Match' to join a game or click on a table in the list below.");
+
+            // Update login button to logout
+            $("#lobby-loginout").removeClass("login").addClass("logout").off('click').click(function() {
+                $("#poker-main").main("logout");
+            });
+
             //$("#lobby-name").html(h.myData.username)
         },
         login_res: function(f) {

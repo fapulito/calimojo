@@ -6,10 +6,12 @@ with 'FB::Poker';
 use feature qw(state);
 
 #use DBI;
+use FB::Compat::Timer;
 use FB::Db;
 use SQL::Abstract;
 use Mojo::JSON qw(j);
-use Digest::SHA qw(hmac_sha1_hex hmac_sha256);
+use Digest::SHA qw(hmac_sha256);
+use Crypt::Eksblowfish::Bcrypt qw(bcrypt en_base64);
 use FB::Poker;
 use FB::Chat;
 use FB::Login;
@@ -41,12 +43,12 @@ sub _build_prize_timer {
     $t += 24 * 60 * 60;
 
     my $seconds = $t - localtime;
-    return EV::timer $seconds, 0, sub {
+    return FB::Compat::Timer::timer($seconds, 0, sub {
         $self->prize_timer( $self->_build_prize_timer );
         $self->db->reset_leaders;
         $self->_update_all_logins;
         $self->_notify_leaders;
-    };
+    });
 }
 
 has 'news' => (
@@ -261,10 +263,8 @@ sub validate {
         }
     }
 
-    # hash password
-    $opts->{password} = hmac_sha1_hex( $opts->{password}, $self->secret )
-      if $opts->{password};
-
+    # Note: Password hashing is done in register(), not here
+    # validate() only performs format checks, not transformations
     return $opts;
 }
 
@@ -437,6 +437,27 @@ sub guest_login {
         [ 'notify_leaders', { leaders => $self->db->fetch_leaders } ] );
 }
 
+sub _bcrypt_hash {
+    my ($self, $plaintext) = @_;
+    # Generate bcrypt hash with cost factor 12
+    # Salt format: $2a$12$<22 base64 chars>
+    my $cost = 12;
+    my $salt_bytes = '';
+    for (1..16) {
+        $salt_bytes .= chr(int(rand(256)));
+    }
+    my $salt = sprintf('$2a$%02d$%s', $cost, en_base64($salt_bytes));
+    return bcrypt($plaintext, $salt);
+}
+
+sub _bcrypt_verify {
+    my ($self, $plaintext, $stored_hash) = @_;
+    return unless $stored_hash && $plaintext;
+    # bcrypt() with the stored hash as salt will produce the same hash if password matches
+    my $check_hash = bcrypt($plaintext, $stored_hash);
+    return $check_hash eq $stored_hash;
+}
+
 sub register {
     my ( $self, $login, $opts ) = @_;
 
@@ -450,6 +471,11 @@ sub register {
         };
         $login->send($response);
         return;
+    }
+
+    # Hash password with bcrypt before storing (cost 12)
+    if ($opts->{password}) {
+        $opts->{password} = $self->_bcrypt_hash($opts->{password});
     }
 
     # add user
@@ -680,7 +706,12 @@ sub _login {
 
 sub login {
     my ( $self, $login, $opts ) = @_;
-    my $user = $self->db->fetch_user($opts);
+    
+    # Extract plaintext password before fetching user
+    my $plaintext_password = $opts->{password};
+    
+    # Fetch user by username only (not password - we verify separately)
+    my $user = $self->db->fetch_user({ username => $opts->{username} });
 
     unless (ref $user eq 'FB::User') {
        $login->send(["login_res", { success => 0, reason => "No such user" }]);
@@ -688,10 +719,15 @@ sub login {
        return;
     }
 
+    # Verify password using bcrypt comparison
+    unless ($self->_bcrypt_verify($plaintext_password, $user->password)) {
+       $login->send(["login_res", { success => 0, reason => "Invalid password" }]);
+       $self->logout($login);
+       return;
+    }
+
     $login->user($user);
     $self->_login($login);
-
-    #$self->_login( $login, $opts, { username => 1, password => 1 } );
 }
 
 sub login_book {
@@ -938,11 +974,9 @@ sub BUILD {
     $self->command( { %{ $self->command }, %{ $self->poker_command } } );
     $self->_create_channel( { channel => 'main' } );
     $self->cycle_event(
-        EV::timer 300,
-        300,
-        sub {
+        FB::Compat::Timer::timer(300, 300, sub {
             $self->cycle300;
-        }
+        })
     );
 
     # Create test tables with house players on startup

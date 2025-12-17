@@ -5,7 +5,6 @@ const FacebookStrategy = require('passport-facebook').Strategy;
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
-const path = require('path');
 
 const app = express();
 
@@ -57,7 +56,6 @@ function clearAuthCookie(res) {
   });
 }
 
-
 // Middleware setup
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -68,6 +66,7 @@ app.use(cors({
     : 'http://localhost:3000',
   credentials: true
 }));
+
 
 // JWT Authentication Middleware (replaces session-based auth)
 function authenticateJWT(req, res, next) {
@@ -93,26 +92,33 @@ app.use(authenticateJWT);
 // Passport initialization (for Facebook OAuth flow only)
 app.use(passport.initialize());
 
-// Facebook Strategy - only configure if credentials are provided
-const facebookAuthEnabled = process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET;
+// Facebook Strategy - only configure if credentials are provided and valid
+const facebookAuthEnabled = !!(process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET);
 
 if (facebookAuthEnabled) {
-  passport.use(new FacebookStrategy({
-      clientID: process.env.FACEBOOK_APP_ID,
-      clientSecret: process.env.FACEBOOK_APP_SECRET,
-      callbackURL: process.env.FACEBOOK_CALLBACK_URL || '/auth/facebook/callback',
-      profileFields: ['id', 'displayName', 'emails', 'photos']
-    },
-    function(accessToken, _refreshToken, profile, done) {
-      const user = {
-        id: profile.id,
-        displayName: profile.displayName,
-        email: profile.emails ? profile.emails[0].value : null,
-        photo: profile.photos ? profile.photos[0].value : null
-      };
-      return done(null, user);
-    }
-  ));
+  if (!process.env.FACEBOOK_APP_ID.trim() || !process.env.FACEBOOK_APP_SECRET.trim()) {
+    console.error('ERROR: FACEBOOK_APP_ID or FACEBOOK_APP_SECRET is empty');
+  } else {
+    const callbackURL = process.env.FACEBOOK_CALLBACK_URL || '/auth/facebook/callback';
+    console.log(`Facebook Auth: Enabled (callback: ${callbackURL})`);
+    
+    passport.use(new FacebookStrategy({
+        clientID: process.env.FACEBOOK_APP_ID,
+        clientSecret: process.env.FACEBOOK_APP_SECRET,
+        callbackURL: callbackURL,
+        profileFields: ['id', 'displayName', 'emails', 'photos']
+      },
+      function(accessToken, _refreshToken, profile, done) {
+        const user = {
+          id: profile.id,
+          displayName: profile.displayName,
+          email: profile.emails ? profile.emails[0].value : null,
+          photo: profile.photos ? profile.photos[0].value : null
+        };
+        return done(null, user);
+      }
+    ));
+  }
 } else {
   console.log('Facebook Auth: Disabled (FACEBOOK_APP_ID or FACEBOOK_APP_SECRET not set)');
 }
@@ -122,19 +128,14 @@ passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((user, done) => done(null, user));
 
 
-// Routes
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/index.html'));
-});
-
-// Facebook Auth Routes - only register if Facebook auth is enabled
+// Facebook Auth Routes
 if (facebookAuthEnabled) {
   app.get('/auth/facebook',
     passport.authenticate('facebook', { scope: ['email'], session: false })
   );
 
   app.get('/auth/facebook/callback',
-    passport.authenticate('facebook', { failureRedirect: '/login', session: false }),
+    passport.authenticate('facebook', { failureRedirect: '/?error=auth_failed', session: false }),
     function(req, res) {
       // Create JWT token and set as HTTP-only cookie
       const token = createToken(req.user);
@@ -198,7 +199,7 @@ app.get('/api/auth/status', (req, res) => {
 });
 
 
-// API route for poker functionality
+// API route for poker games
 app.get('/api/poker/games', (_req, res) => {
   res.json({
     games: [
@@ -209,22 +210,46 @@ app.get('/api/poker/games', (_req, res) => {
   });
 });
 
-// Serve static files from public directory
-app.use(express.static(path.join(__dirname, '../public')));
+// API route to join a poker game
+app.post('/api/poker/join', (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({
+      success: false,
+      message: 'You must be logged in to join a game'
+    });
+  }
 
-// Error handling middleware
-app.use((err, req, res, _next) => {
-  console.error(err.stack);
-  res.status(500).send('Something broke!');
+  const { gameId } = req.body;
+  if (!gameId) {
+    return res.status(400).json({
+      success: false,
+      message: 'Game ID is required'
+    });
+  }
+
+  // In production, this would connect to the Perl backend
+  const backendUrl = process.env.BACKEND_WS_URL || 'ws://localhost:8080';
+  
+  res.json({
+    success: true,
+    message: 'Game join request processed',
+    gameId: gameId,
+    websocketUrl: backendUrl,
+    user: {
+      id: req.user.id,
+      displayName: req.user.displayName
+    }
+  });
 });
 
-// Start server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV}`);
-  console.log(`Auth Method: JWT (stateless)`);
-  console.log(`Facebook Auth: ${process.env.FACEBOOK_APP_ID ? 'Configured' : 'Not configured'}`);
+// Health check
+app.get('/api/health', (_req, res) => {
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    authMethod: 'JWT'
+  });
 });
 
+// Export for Vercel serverless
 module.exports = app;

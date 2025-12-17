@@ -1,0 +1,196 @@
+-- Mojo Poker PostgreSQL Schema
+-- Compatible with NeonDB and other PostgreSQL databases
+
+-- Create tables with proper data types and constraints
+
+-- Users table
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    facebook_id VARCHAR(50) UNIQUE,
+    username VARCHAR(50) NOT NULL,
+    password VARCHAR(100),
+    email VARCHAR(100),
+    birthday VARCHAR(50),
+    handle VARCHAR(50),
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    profile_pic TEXT,
+    chips INTEGER DEFAULT 400,
+    invested INTEGER DEFAULT 400,
+    level INTEGER DEFAULT 0,
+    last_visit TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create index for faster user lookups
+CREATE INDEX IF NOT EXISTS idx_users_facebook_id ON users(facebook_id);
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+
+-- Login sessions table
+CREATE TABLE IF NOT EXISTS logins (
+    id VARCHAR(50) PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    remote_address VARCHAR(50),
+    last_req_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    first_req_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_visit TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Leaderboard table
+CREATE TABLE IF NOT EXISTS leaderboard (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    profit_percentage DECIMAL(10,2) DEFAULT 0.00,
+    chips INTEGER DEFAULT 0,
+    games_played INTEGER DEFAULT 0,
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Game tables
+CREATE TABLE IF NOT EXISTS tables_ring (
+    id SERIAL PRIMARY KEY,
+    director_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    game_class VARCHAR(50) NOT NULL,
+    limit_type VARCHAR(20) NOT NULL,
+    small_blind INTEGER DEFAULT 0,
+    big_blind INTEGER DEFAULT 0,
+    chair_count INTEGER DEFAULT 6,
+    state INTEGER DEFAULT 0,
+    plr_map JSONB DEFAULT '{}',
+    avg_pot DECIMAL(10,2) DEFAULT 0.00,
+    plrs_flop DECIMAL(10,2) DEFAULT 0.00,
+    hhr INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tournament tables
+CREATE TABLE IF NOT EXISTS tables_tour (
+    id SERIAL PRIMARY KEY,
+    director_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    game_class VARCHAR(50) NOT NULL,
+    limit_type VARCHAR(20) NOT NULL,
+    small_blind INTEGER DEFAULT 0,
+    big_blind INTEGER DEFAULT 0,
+    chair_count INTEGER DEFAULT 6,
+    state INTEGER DEFAULT 0,
+    buy_in INTEGER DEFAULT 0,
+    fee INTEGER DEFAULT 0,
+    prize_pool INTEGER DEFAULT 0,
+    enrolled_count INTEGER DEFAULT 0,
+    plr_map JSONB DEFAULT '{}',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Chat messages
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id SERIAL PRIMARY KEY,
+    channel VARCHAR(50) NOT NULL,
+    from_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    message TEXT NOT NULL,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- User statistics
+CREATE TABLE IF NOT EXISTS user_stats (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    games_played INTEGER DEFAULT 0,
+    hands_won INTEGER DEFAULT 0,
+    hands_lost INTEGER DEFAULT 0,
+    chips_won INTEGER DEFAULT 0,
+    chips_lost INTEGER DEFAULT 0,
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create functions for common operations
+
+-- Function to update user's last visit time
+CREATE OR REPLACE FUNCTION update_user_last_visit(user_id_param INTEGER)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE users SET last_visit = CURRENT_TIMESTAMP WHERE id = user_id_param;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to credit chips to a user
+CREATE OR REPLACE FUNCTION credit_chips(user_id_param INTEGER, amount INTEGER)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE users SET chips = chips + amount WHERE id = user_id_param;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to get user's current chip count
+CREATE OR REPLACE FUNCTION get_user_chips(user_id_param INTEGER)
+RETURNS INTEGER AS $$
+DECLARE
+    chip_count INTEGER;
+BEGIN
+    SELECT chips INTO chip_count FROM users WHERE id = user_id_param;
+    RETURN chip_count;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create sequences if they don't exist
+CREATE SEQUENCE IF NOT EXISTS users_id_seq OWNED BY users.id;
+CREATE SEQUENCE IF NOT EXISTS leaderboard_id_seq OWNED BY leaderboard.id;
+CREATE SEQUENCE IF NOT EXISTS tables_ring_id_seq OWNED BY tables_ring.id;
+CREATE SEQUENCE IF NOT EXISTS tables_tour_id_seq OWNED BY tables_tour.id;
+CREATE SEQUENCE IF NOT EXISTS chat_messages_id_seq OWNED BY chat_messages.id;
+CREATE SEQUENCE IF NOT EXISTS user_stats_id_seq OWNED BY user_stats.id;
+
+-- Set sequence values to max existing IDs
+SELECT setval('users_id_seq', COALESCE((SELECT MAX(id) FROM users), 1));
+SELECT setval('leaderboard_id_seq', COALESCE((SELECT MAX(id) FROM leaderboard), 1));
+SELECT setval('tables_ring_id_seq', COALESCE((SELECT MAX(id) FROM tables_ring), 1));
+SELECT setval('tables_tour_id_seq', COALESCE((SELECT MAX(id) FROM tables_tour), 1));
+SELECT setval('chat_messages_id_seq', COALESCE((SELECT MAX(id) FROM chat_messages), 1));
+SELECT setval('user_stats_id_seq', COALESCE((SELECT MAX(id) FROM user_stats), 1));
+
+-- Add triggers for automatic timestamp updates
+CREATE OR REPLACE FUNCTION update_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION update_last_updated()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.last_updated = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_users_timestamp
+BEFORE UPDATE ON users
+FOR EACH ROW
+EXECUTE FUNCTION update_timestamp();
+
+CREATE TRIGGER update_leaderboard_timestamp
+BEFORE UPDATE ON leaderboard
+FOR EACH ROW
+EXECUTE FUNCTION update_last_updated();
+
+CREATE TRIGGER update_tables_ring_timestamp
+BEFORE UPDATE ON tables_ring
+FOR EACH ROW
+EXECUTE FUNCTION update_timestamp();
+
+CREATE TRIGGER update_tables_tour_timestamp
+BEFORE UPDATE ON tables_tour
+FOR EACH ROW
+EXECUTE FUNCTION update_timestamp();
+
+CREATE TRIGGER update_user_stats_timestamp
+BEFORE UPDATE ON user_stats
+FOR EACH ROW
+EXECUTE FUNCTION update_last_updated();

@@ -1,0 +1,308 @@
+#!/usr/bin/env bash
+# Install script for AlmaLinux with PostgreSQL support
+
+# Run as root
+if [ "$EUID" -ne 0 ]; then
+  echo "Please run as root"
+  exit 1
+fi
+
+set -euo pipefail
+
+# Check if we're on AlmaLinux
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    if [[ "$ID" != "almalinux" && "$ID" != "rocky" && "$ID" != "centos" ]]; then
+        echo "This script is designed for AlmaLinux/Rocky/CentOS"
+        echo "Detected: $ID"
+        read -p "Continue anyway? (y/n) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            exit 1
+        fi
+    fi
+fi
+
+# Install required packages
+echo "[1/6] Installing required packages..."
+dnf install -y epel-release
+dnf install -y dnf-plugins-core
+dnf config-manager --set-enabled crb
+dnf update -y
+echo "[✓] System packages updated"
+
+# Install build tools and dependencies
+echo "[2/6] Installing build tools and dependencies..."
+dnf install -y gcc make perl perl-CPAN perl-DBI perl-DBD-SQLite \
+    perl-Digest-SHA perl-EV perl-Mojolicious \
+    perl-Term-ReadLine-Gnu perl-Tie-IxHash perl-Algorithm-Combinatorics \
+    sqlite sqlite-devel postgresql postgresql-server postgresql-devel \
+    postgresql-contrib wget curl git openssl-devel zlib-devel \
+    readline-devel perl-DBD-Pg perl-JSON-PP perl-MIME-Base64 \
+    perl-Time-Piece perl-Data-Dumper
+echo "[✓] Build tools and dependencies installed"
+
+# Note: perl-SQL-Abstract is installed via CPAN below due to package naming changes
+# in newer AlmaLinux versions. Some Perl modules are better installed via CPAN
+# for compatibility across different Linux distributions.
+
+echo "[3/6] Installing cpanminus..."
+# Install cpanminus to standard location
+if ! command -v cpanm &> /dev/null; then
+    echo "Installing cpanminus..."
+
+    # Try to install from system package first
+    if dnf install -y perl-App-cpanminus 2>/dev/null; then
+        echo "[✓] cpanminus installed from system package"
+    else
+        echo "System package not available, installing from source..."
+
+        # Create temporary directory for secure installation
+        TEMP_DIR=$(mktemp -d)
+        CPANM_URL="https://cpan.metacpan.org/authors/id/M/MI/MIYAGAWA/App-cpanminus-1.7044.tar.gz"
+
+        # Download with verification
+        if curl -fSL --retry 3 -o "$TEMP_DIR/cpanminus.tar.gz" "$CPANM_URL"; then
+
+            # Extract and install
+            tar -xzf "$TEMP_DIR/cpanminus.tar.gz" -C "$TEMP_DIR"
+            cd "$TEMP_DIR/App-cpanminus-1.7044" || { echo "Error: Failed to enter cpanminus directory"; exit 1; }
+
+            if perl Makefile.PL && make && make install; then
+                echo "[✓] cpanminus installed from source"
+            else
+                echo "Error: Failed to install cpanminus from source"
+                echo "Please install manually: dnf install perl-App-cpanminus"
+                rm -rf "$TEMP_DIR"
+                exit 1
+            fi
+
+            # Clean up
+            cd - || true
+            rm -rf "$TEMP_DIR"
+        else
+            echo "Error: Failed to download cpanminus"
+            echo "Please install manually: dnf install perl-App-cpanminus"
+            rm -rf "$TEMP_DIR"
+            exit 1
+        fi
+    fi
+fi
+
+# Verify cpanminus is available
+if ! command -v cpanm &> /dev/null; then
+    echo "Error: cpanminus is not available in PATH"
+    echo "Please install manually: dnf install perl-App-cpanminus"
+    exit 1
+fi
+
+echo "[4/6] Installing Perl modules..."
+# Install Perl modules with error handling
+if cpanm -S AnyEvent::ReadLine::Gnu Poker::Eval Poker::Robot SQL::Abstract Crypt::Eksblowfish::Bcrypt Test::More Test::Exception Test::MockModule Test::Output; then
+    echo "[✓] All Perl modules installed successfully"
+else
+    echo "Error: Failed to install some Perl modules via CPAN"
+    echo "Attempting to install missing modules individually..."
+
+    # Try installing modules one by one for better error reporting
+    for module in AnyEvent::ReadLine::Gnu Poker::Eval Poker::Robot SQL::Abstract Crypt::Eksblowfish::Bcrypt Test::More Test::Exception Test::MockModule Test::Output; do
+        echo "Installing $module..."
+        if cpanm -S "$module"; then
+            echo "[✓] $module installed successfully"
+        else
+            echo "Warning: Failed to install $module"
+            echo "You may need to install this module manually later"
+        fi
+    done
+fi
+
+# Configuration
+INSTALL_PATH=/opt
+BIN_PATH=/usr/local/sbin
+DATA_PATH=/var/opt/mojopoker
+
+# Create directories
+mkdir -p $INSTALL_PATH
+mkdir -p $BIN_PATH
+mkdir -p $DATA_PATH
+mkdir -p $INSTALL_PATH/mojopoker/db
+
+# Copy application files
+cp -R ./mojopoker-1.1.1 $INSTALL_PATH
+ln -sfn $INSTALL_PATH/mojopoker-1.1.1 $INSTALL_PATH/mojopoker
+ln -sf $INSTALL_PATH/mojopoker-1.1.1/script/mpadmin.pl $BIN_PATH
+ln -sf $INSTALL_PATH/mojopoker-1.1.1/script/wsshell.pl $BIN_PATH
+
+# Set up environment variables
+echo "Creating environment configuration..."
+cat > /etc/profile.d/mojopoker.sh << 'EOF'
+# Mojo Poker Environment Variables
+export MOJOPOKER_HOME=/opt/mojopoker
+export PATH=$PATH:/usr/local/sbin
+EOF
+
+# Create .env file template
+cat > $INSTALL_PATH/mojopoker/.env << 'EOF'
+# Mojo Poker Configuration
+# Copy this to .env and modify for your setup
+
+# Facebook Configuration
+FACEBOOK_APP_ID=your_facebook_app_id
+FACEBOOK_APP_SECRET=your_facebook_app_secret
+FACEBOOK_API_VERSION=v18.0
+
+# Database Configuration
+DATABASE_TYPE=sqlite
+# DATABASE_TYPE=postgres
+# DATABASE_URL=postgresql://user:password@localhost:5432/mojopoker
+SQLITE_PATH=/opt/mojopoker/db
+
+# Deployment
+DEPLOYMENT_ENV=production
+EOF
+
+# Set up database
+echo "Setting up SQLite databases..."
+# Change to the correct directory and verify schema files exist
+if [ ! -d "$INSTALL_PATH/mojopoker/db" ]; then
+    echo "Error: Database directory not found at $INSTALL_PATH/mojopoker/db"
+    echo "Please check the installation path and try again"
+    exit 1
+fi
+
+cd "$INSTALL_PATH/mojopoker/db" || { echo "Error: Failed to change to database directory"; exit 1; }
+
+# Verify schema files exist
+if [ ! -f fb.schema ]; then
+    echo "Error: fb.schema not found in database directory"
+    echo "Looking for file in current directory..."
+    if [ -f ./mojopoker-1.1.1/db/fb.schema ]; then
+        echo "Found schema file in script directory, copying..."
+        cp ./mojopoker-1.1.1/db/*.schema .
+    else
+        echo "Error: Cannot find fb.schema file"
+        echo "Please ensure the schema files are present"
+        exit 1
+    fi
+fi
+
+# Create databases
+if sqlite3 fb.db < fb.schema; then
+    echo "[✓] fb.db created successfully"
+else
+    echo "Error: Failed to create fb.db"
+    exit 1
+fi
+
+if sqlite3 poker.db < poker.schema; then
+    echo "[✓] poker.db created successfully"
+else
+    echo "Error: Failed to create poker.db"
+    exit 1
+fi
+
+chmod 666 *
+echo "[5/6] Database setup completed"
+
+# Set up PostgreSQL (optional)
+read -p "Do you want to set up PostgreSQL? (y/n) " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    echo "Setting up PostgreSQL..."
+
+    # Initialize PostgreSQL database
+    postgresql-setup --initdb
+
+    # Enable and start PostgreSQL
+    systemctl enable postgresql
+    systemctl start postgresql
+
+    # Create database and user
+    # Note: Password must be set via environment variable for security
+    if [ -z "${MOJOPOKER_DB_PASSWORD:-}" ]; then
+        echo "Error: MOJOPOKER_DB_PASSWORD environment variable is required for PostgreSQL setup"
+        echo "Please set MOJOPOKER_DB_PASSWORD and run this script again"
+        exit 1
+    fi
+
+    sudo -u postgres psql << POSTGRES_EOF
+CREATE DATABASE mojopoker;
+CREATE USER mojopoker WITH PASSWORD '${MOJOPOKER_DB_PASSWORD}';
+GRANT ALL PRIVILEGES ON DATABASE mojopoker TO mojopoker;
+POSTGRES_EOF
+
+    # Create schema
+    sudo -u postgres psql mojopoker < postgres.schema
+
+    # Update .env for PostgreSQL
+    sed -i 's|DATABASE_TYPE=sqlite|DATABASE_TYPE=postgres|' $INSTALL_PATH/mojopoker/.env
+    echo "DATABASE_URL=postgresql://mojopoker:${MOJOPOKER_DB_PASSWORD}@localhost:5432/mojopoker" >> $INSTALL_PATH/mojopoker/.env
+
+    echo "PostgreSQL setup completed!"
+fi
+
+# Set permissions
+chmod 755 $INSTALL_PATH/mojopoker/script/*
+chown -R root:root $INSTALL_PATH/mojopoker
+chmod -R 755 $INSTALL_PATH/mojopoker
+
+# Set up systemd service
+echo "Setting up systemd service..."
+cp $INSTALL_PATH/mojopoker/systemd/* /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable mojopoker
+
+# Create log directory
+mkdir -p /var/log/mojopoker
+chown root:root /var/log/mojopoker
+chmod 755 /var/log/mojopoker
+
+# Update systemd service for AlmaLinux
+cat > /etc/systemd/system/mojopoker.service << 'EOF'
+[Unit]
+Description=Mojo Poker Server
+After=network.target
+
+[Service]
+Type=forking
+User=root
+Group=root
+WorkingDirectory=/opt/mojopoker
+EnvironmentFile=/opt/mojopoker/.env
+ExecStart=/opt/mojopoker/script/mojopoker.pl
+Restart=on-failure
+RestartSec=5s
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=mojopoker
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+echo "[6/6] Systemd service configured"
+
+echo
+echo "🎉 Installation completed successfully!"
+echo
+echo "📋 Next steps:"
+echo "1. Start the server: sudo systemctl start mojopoker.service"
+echo "2. Check status: sudo systemctl status mojopoker.service"
+echo "3. Load sample games: /opt/mojopoker/script/wsshell.pl < /opt/mojopoker/db/example_games"
+echo
+echo "📝 Configuration:"
+echo "- Edit /opt/mojopoker/.env to set up Facebook credentials"
+echo "- Choose database type (sqlite or postgres)"
+echo "- Set deployment environment (development or production)"
+echo
+echo "🌐 Access the application:"
+echo "- Web interface: http://localhost:3000"
+echo "- Admin tools: /opt/mojopoker/script/mpadmin.pl"
+echo
+echo "💡 Tips:"
+echo "- For PostgreSQL: Adjust connection string in .env and run migration script"
+echo "- Check logs: journalctl -u mojopoker.service"
+echo "- Facebook setup: Create app at https://developers.facebook.com/"
+echo
+echo "Thank you for installing Mojo Poker! 🎰"

@@ -20,7 +20,27 @@ has 'dbh' => (
 );
 
 sub _build_dbh {
-    return DBI->connect( "dbi:SQLite:dbname=/opt/mojopoker/db/fb.db", "", "" );
+    # Support both SQLite (local dev) and PostgreSQL (NeonDB production)
+    my $db_host = $ENV{DB_HOST};
+    
+    if ($db_host) {
+        # PostgreSQL/NeonDB connection
+        my $db_port = $ENV{DB_PORT} || 5432;
+        my $db_name = $ENV{DB_NAME} || 'neondb';
+        my $db_user = $ENV{DB_USER} || '';
+        my $db_pass = $ENV{DB_PASSWORD} || '';
+        my $sslmode = $ENV{DB_SSLMODE} || 'require';
+        
+        return DBI->connect(
+            "dbi:Pg:dbname=$db_name;host=$db_host;port=$db_port;sslmode=$sslmode",
+            $db_user,
+            $db_pass,
+            { RaiseError => 1, AutoCommit => 1, pg_enable_utf8 => 1 }
+        );
+    } else {
+        # SQLite fallback for local development
+        return DBI->connect( "dbi:SQLite:dbname=./db/fb.db", "", "" );
+    }
 }
 
 has 'sql' => (

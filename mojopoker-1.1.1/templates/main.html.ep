@@ -7,7 +7,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=us-ascii">
     <meta name="description" content="Poker with Friends">
     <meta name="keywords" content="poker friends facebook games">
-    <meta property="fb:app_id" content="431502190982449">
+    <meta property="fb:app_id" content="<%= $facebook_app_id %>">
     <meta property="og:url"           content="https://mojopoker.xyz" />
     <meta property="og:type"          content="website" />
     <meta property="og:title"         content="Poker With Friends" />

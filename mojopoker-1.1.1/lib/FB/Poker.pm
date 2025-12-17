@@ -315,6 +315,8 @@ sub reload {
 
 sub auto_match {
     my ( $self, $login ) = @_;
+
+    # First try to find existing tables with available seats
     for my $table ( values %{ $self->table_list }) {
        my ($has_player, $has_seat);
        #for my $chair (@{ $table->chairs }) {
@@ -323,19 +325,19 @@ sub auto_match {
           if ($table->chairs->[$chair]->has_player) {
              $has_player = 1;
              if ( $has_seat ) {
-                $login->send(["auto_match_res", { 
-                   success => 1, 
+                $login->send(["auto_match_res", {
+                   success => 1,
                    table_id => $table->table_id,
                    chair_id => $chair,
                 }]);
                 return;
              }
-          } 
+          }
           else {
              $has_seat = 1;
              if ( $has_player ) {
-                $login->send(["auto_match_res", { 
-                   success => 1, 
+                $login->send(["auto_match_res", {
+                   success => 1,
                    table_id => $table->table_id,
                    chair_id => $chair,
                 }]);
@@ -344,6 +346,43 @@ sub auto_match {
           }
        }
     }
+
+    # If no suitable tables found, create a new test table for single player
+    if (scalar keys %{ $self->table_list } == 0) {
+        # Create a basic Texas Hold'em table
+        my $table_opts = {
+            table_id => $self->table_count + 1,
+            chair_count => 6,
+            game_class => 'holdem',
+            limit => 'NL',
+            small_blind => 1,
+            big_blind => 2,
+            auto_start => 1,
+            db => $self->db,
+        };
+
+        my $table = $self->table_maker->ring_table($table_opts);
+        if ($table) {
+            $self->table_list->{ $table->table_id } = $table;
+            $self->table_count($self->table_count + 1);
+            $self->_notify_lobby(
+                [ 'notify_create_ring', $self->_fetch_table_opts($table) ]
+            );
+
+            # Find first available chair
+            for my $chair (0 .. $#{ $table->chairs }) {
+                if (!$table->chairs->[$chair]->has_player) {
+                    $login->send(["auto_match_res", {
+                       success => 1,
+                       table_id => $table->table_id,
+                       chair_id => $chair,
+                    }]);
+                    return;
+                }
+            }
+        }
+    }
+
     $login->send(["auto_match_res", { success => 0 }]);
 }
 
@@ -1216,4 +1255,3 @@ sub _table_opts {
 }
 
 1;
-
