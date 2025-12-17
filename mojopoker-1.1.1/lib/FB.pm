@@ -263,13 +263,8 @@ sub validate {
         }
     }
 
-    # hash password with bcrypt (proper password hashing)
-    if ($opts->{password}) {
-        # Generate bcrypt hash with cost factor 12
-        my $salt = bcrypt_gensalt(cost => 12);
-        $opts->{password} = bcrypt($opts->{password}, $salt);
-    }
-
+    # Note: Password hashing is done in register(), not here
+    # validate() only performs format checks, not transformations
     return $opts;
 }
 
@@ -442,6 +437,27 @@ sub guest_login {
         [ 'notify_leaders', { leaders => $self->db->fetch_leaders } ] );
 }
 
+sub _bcrypt_hash {
+    my ($self, $plaintext) = @_;
+    # Generate bcrypt hash with cost factor 12
+    # Salt format: $2a$12$<22 base64 chars>
+    my $cost = 12;
+    my $salt_bytes = '';
+    for (1..16) {
+        $salt_bytes .= chr(int(rand(256)));
+    }
+    my $salt = sprintf('$2a$%02d$%s', $cost, en_base64($salt_bytes));
+    return bcrypt($plaintext, $salt);
+}
+
+sub _bcrypt_verify {
+    my ($self, $plaintext, $stored_hash) = @_;
+    return unless $stored_hash && $plaintext;
+    # bcrypt() with the stored hash as salt will produce the same hash if password matches
+    my $check_hash = bcrypt($plaintext, $stored_hash);
+    return $check_hash eq $stored_hash;
+}
+
 sub register {
     my ( $self, $login, $opts ) = @_;
 
@@ -455,6 +471,11 @@ sub register {
         };
         $login->send($response);
         return;
+    }
+
+    # Hash password with bcrypt before storing (cost 12)
+    if ($opts->{password}) {
+        $opts->{password} = $self->_bcrypt_hash($opts->{password});
     }
 
     # add user
@@ -685,7 +706,12 @@ sub _login {
 
 sub login {
     my ( $self, $login, $opts ) = @_;
-    my $user = $self->db->fetch_user($opts);
+    
+    # Extract plaintext password before fetching user
+    my $plaintext_password = $opts->{password};
+    
+    # Fetch user by username only (not password - we verify separately)
+    my $user = $self->db->fetch_user({ username => $opts->{username} });
 
     unless (ref $user eq 'FB::User') {
        $login->send(["login_res", { success => 0, reason => "No such user" }]);
@@ -693,10 +719,15 @@ sub login {
        return;
     }
 
+    # Verify password using bcrypt comparison
+    unless ($self->_bcrypt_verify($plaintext_password, $user->password)) {
+       $login->send(["login_res", { success => 0, reason => "Invalid password" }]);
+       $self->logout($login);
+       return;
+    }
+
     $login->user($user);
     $self->_login($login);
-
-    #$self->_login( $login, $opts, { username => 1, password => 1 } );
 }
 
 sub login_book {
