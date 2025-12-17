@@ -33,7 +33,7 @@
 
     - name: Upgrade all packages
       apt:
-        upgrade: dist
+        upgrade: safe
       when: ansible_os_family == "Debian"
 
     - name: Install base packages
@@ -73,9 +73,6 @@
         name: "{{ item }}"
       loop:
         - Moo
-        - DBD::Pg
-        - Mojolicious
-        - SQL::Abstract
         - Crypt::Eksblowfish::Bcrypt
 
     # ==========================================
@@ -110,6 +107,22 @@
         dest: "{{ app_dir }}-backup-{{ ansible_date_time.iso8601_basic_short }}.tar.gz"
         format: gz
       when: app_dir_stat.stat.exists and app_dir_stat.stat.isdir
+      tags: [deploy]
+
+    - name: Find old backup files (older than 30 days)
+      find:
+        paths: "{{ app_dir | dirname }}"
+        patterns: "{{ app_dir | basename }}-backup-*.tar.gz"
+        age: 30d
+      register: old_backups
+      tags: [deploy]
+
+    - name: Remove old backup files
+      file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ old_backups.files }}"
+      when: old_backups.files | length > 0
       tags: [deploy]
 
     - name: Create application directory
