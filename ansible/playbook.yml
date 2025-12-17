@@ -1,0 +1,225 @@
+---
+# Mojo Poker Server Setup Playbook
+# Usage: ansible-playbook -i inventory.ini playbook.yml
+
+- name: Setup Mojo Poker Server
+  hosts: mojopoker
+  become: yes
+  
+  tasks:
+    # ==========================================
+    # System Updates and Base Packages
+    # ==========================================
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Upgrade all packages
+      apt:
+        upgrade: dist
+      when: ansible_os_family == "Debian"
+
+    - name: Install base packages
+      apt:
+        name:
+          - git
+          - curl
+          - wget
+          - vim
+          - htop
+          - ufw
+          - fail2ban
+        state: present
+
+    # ==========================================
+    # Perl and Dependencies
+    # ==========================================
+    - name: Install Perl and required packages
+      apt:
+        name:
+          - perl
+          - cpanminus
+          - libdbi-perl
+          - libdbd-pg-perl
+          - libmojolicious-perl
+          - libio-socket-ssl-perl
+          - libsql-abstract-perl
+          - libdigest-sha-perl
+          - build-essential
+          - libssl-dev
+          - libpq-dev
+        state: present
+
+
+    - name: Install additional Perl modules via cpanm
+      cpanm:
+        name: "{{ item }}"
+      loop:
+        - Moo
+        - DBD::Pg
+        - Mojolicious
+        - SQL::Abstract
+        - Crypt::Eksblowfish::Bcrypt
+
+    # ==========================================
+    # Nginx and Certbot
+    # ==========================================
+    - name: Install Nginx and Certbot
+      apt:
+        name:
+          - nginx
+          - certbot
+          - python3-certbot-nginx
+        state: present
+
+    - name: Start and enable Nginx
+      systemd:
+        name: nginx
+        state: started
+        enabled: yes
+
+    # ==========================================
+    # Application Deployment
+    # ==========================================
+    - name: Create application directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: '0755'
+
+    - name: Clone repository
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ app_dir }}"
+        version: "{{ repo_branch }}"
+        force: yes
+      become_user: "{{ app_user }}"
+
+    - name: Set ownership of app directory
+      file:
+        path: "{{ app_dir }}"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        recurse: yes
+
+
+    # ==========================================
+    # Environment Configuration
+    # ==========================================
+    - name: Create environment file
+      template:
+        src: templates/env.j2
+        dest: "{{ app_dir }}/.env"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: '0600'
+
+    # ==========================================
+    # Systemd Service
+    # ==========================================
+    - name: Create systemd service
+      template:
+        src: templates/mojopoker.service.j2
+        dest: /etc/systemd/system/mojopoker.service
+        mode: '0644'
+      notify: Reload systemd
+
+    - name: Enable and start mojopoker service
+      systemd:
+        name: mojopoker
+        state: started
+        enabled: yes
+        daemon_reload: yes
+
+    # ==========================================
+    # Nginx Configuration
+    # ==========================================
+    - name: Configure Nginx site
+      template:
+        src: templates/nginx.conf.j2
+        dest: /etc/nginx/sites-available/mojopoker
+        mode: '0644'
+      notify: Reload Nginx
+
+    - name: Enable Nginx site
+      file:
+        src: /etc/nginx/sites-available/mojopoker
+        dest: /etc/nginx/sites-enabled/mojopoker
+        state: link
+      notify: Reload Nginx
+
+    - name: Remove default Nginx site
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+      notify: Reload Nginx
+
+
+    # ==========================================
+    # Firewall Configuration
+    # ==========================================
+    - name: Configure UFW defaults
+      ufw:
+        direction: "{{ item.direction }}"
+        policy: "{{ item.policy }}"
+      loop:
+        - { direction: 'incoming', policy: 'deny' }
+        - { direction: 'outgoing', policy: 'allow' }
+
+    - name: Allow SSH
+      ufw:
+        rule: allow
+        port: '22'
+        proto: tcp
+
+    - name: Allow HTTP
+      ufw:
+        rule: allow
+        port: '80'
+        proto: tcp
+
+    - name: Allow HTTPS
+      ufw:
+        rule: allow
+        port: '443'
+        proto: tcp
+
+    - name: Enable UFW
+      ufw:
+        state: enabled
+
+    # ==========================================
+    # SSL Certificate (run manually after DNS is configured)
+    # ==========================================
+    - name: Check if SSL certificate exists
+      stat:
+        path: "/etc/letsencrypt/live/{{ domain_name }}/fullchain.pem"
+      register: ssl_cert
+
+    - name: Obtain SSL certificate
+      command: >
+        certbot --nginx -d {{ domain_name }}
+        --non-interactive --agree-tos
+        --email {{ admin_email }}
+      when: not ssl_cert.stat.exists and domain_name != "your-domain.com"
+
+  # ==========================================
+  # Handlers
+  # ==========================================
+  handlers:
+    - name: Reload systemd
+      systemd:
+        daemon_reload: yes
+
+    - name: Reload Nginx
+      systemd:
+        name: nginx
+        state: reloaded
+
+    - name: Restart mojopoker
+      systemd:
+        name: mojopoker
+        state: restarted

@@ -1,0 +1,26 @@
+# Mojo Poker Server Configuration
+# Copy this file and fill in your values
+
+# Domain configuration
+domain_name: "your-domain.com"  # Your domain pointing to this server
+admin_email: "admin@your-domain.com"  # For Let's Encrypt notifications
+
+# GitHub repository
+repo_url: "https://github.com/fapulito/calimojo.git"
+repo_branch: "main"
+
+# NeonDB Configuration
+db_host: "ep-xxx-xxx-123456.us-east-2.aws.neon.tech"
+db_port: 5432
+db_name: "neondb"
+db_user: "your_neon_username"
+db_password: "your_neon_password"
+
+# Facebook Auth (optional - can be empty for backend-only)
+facebook_app_id: ""
+facebook_app_secret: ""
+
+# Application settings
+app_port: 8080
+app_user: www-data
+app_dir: /var/www/mojopoker
