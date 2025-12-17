@@ -48,9 +48,11 @@ sqlite3 fb.db < fb.schema
 sqlite3 poker.db < poker.schema
 cd ..
 
-# Start the Perl server
-perl script/mojopoker daemon -l http://*:8080
+# Start the Perl server (listens on port 3000 by default)
+perl script/mojopoker.pl
 ```
+
+> **Note:** The server is hardcoded to listen on `http://*:3000`
 
 ### Vercel Frontend (Local)
 
