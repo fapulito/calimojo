@@ -12,6 +12,7 @@ requires 'JSON';
 requires 'MIME::Base64';
 requires 'SQL::Abstract';
 requires 'Tie::IxHash';
+requires 'Crypt::Eksblowfish';
 
 on 'test' => sub {
     requires 'Test::More', '>= 1.302';
