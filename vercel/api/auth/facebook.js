@@ -64,16 +64,60 @@ router.post('/', async (req, res) => {
 
 // Helper function to verify Facebook signed request
 function verifySignedRequest(signedRequest, appSecret) {
-  // In a real implementation, this would verify the signed request
-  // using the Facebook app secret and HMAC-SHA256 algorithm
-  console.log('Verifying Facebook signed request with app secret')
+  if (!signedRequest || !appSecret) {
+    return { isValid: false, error: 'Missing signed request or app secret' }
+  }
 
-  // For now, we'll return a mock verification
-  // In production, you would implement proper verification
-  return {
-    isValid: true,
-    userId: '123456789',
-    algorithm: 'HMAC-SHA256'
+  try {
+    // Split the signed request into signature and payload
+    const parts = signedRequest.split('.')
+    if (parts.length !== 2) {
+      return { isValid: false, error: 'Invalid signed request format' }
+    }
+
+    const [encodedSignature, encodedPayload] = parts
+
+    // Decode the signature (base64url to base64, then to buffer)
+    const signature = Buffer.from(
+      encodedSignature.replace(/-/g, '+').replace(/_/g, '/'),
+      'base64'
+    )
+
+    // Decode the payload
+    const payload = Buffer.from(
+      encodedPayload.replace(/-/g, '+').replace(/_/g, '/'),
+      'base64'
+    ).toString('utf-8')
+
+    // Parse the payload JSON
+    const data = JSON.parse(payload)
+
+    // Verify the algorithm
+    if (data.algorithm && data.algorithm.toUpperCase() !== 'HMAC-SHA256') {
+      return { isValid: false, error: 'Unsupported algorithm: ' + data.algorithm }
+    }
+
+    // Calculate expected signature using HMAC-SHA256
+    const crypto = require('crypto')
+    const expectedSignature = crypto
+      .createHmac('sha256', appSecret)
+      .update(encodedPayload)
+      .digest()
+
+    // Compare signatures using timing-safe comparison
+    if (!crypto.timingSafeEqual(signature, expectedSignature)) {
+      return { isValid: false, error: 'Signature verification failed' }
+    }
+
+    return {
+      isValid: true,
+      userId: data.user_id,
+      algorithm: 'HMAC-SHA256',
+      data: data
+    }
+  } catch (error) {
+    console.error('Error verifying signed request:', error.message)
+    return { isValid: false, error: 'Verification error: ' + error.message }
   }
 }
 

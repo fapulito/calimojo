@@ -1,5 +1,5 @@
 package FB::Login;
-use EV;
+eval { require EV }; # Optional on Windows
 use Moo;
 
 has 'timeout' => (

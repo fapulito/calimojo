@@ -1,0 +1,164 @@
+# Implementation Plan
+
+- [ ] 1. Set up database schema and migrations
+  - [ ] 1.1 Create migration script for chip_package table
+    - Add id, name, chips, price_cents, enabled, sort_order, timestamps
+    - Insert default chip packages (1000 chips/$1, 5000 chips/$4, 15000 chips/$10)
+    - _Requirements: 1.3, 5.2_
+  - [ ] 1.2 Create migration script for chip_transaction table
+    - Add id, user_id, type, chips, stripe fields, timestamps
+    - Add unique constraint on stripe_session_id
+    - _Requirements: 1.4_
+  - [ ] 1.3 Create migration script for processed_webhook table
+    - Add event_id as primary key, event_type, processed_at
+    - _Requirements: 3.3, 3.4_
+  - [ ] 1.4 Create migration to extend user table
+    - Add last_bonus_claim and welcome_bonus_claimed columns
+    - _Requirements: 2.1, 2.4_
+
+- [ ] 2. Implement Stripe payment service
+  - [ ] 2.1 Create payment-service.js with Stripe SDK integration
+    - Initialize Stripe with secret key from environment
+    - Implement createCheckoutSession function
+    - _Requirements: 1.1_
+  - [ ]* 2.2 Write property test for successful payment credits
+    - **Property 1: Successful payment credits correct chip amount**
+    - **Validates: Requirements 1.1**
+  - [ ]* 2.3 Write property test for failed payments
+    - **Property 2: Failed payments do not credit chips**
+    - **Validates: Requirements 1.2**
+  - [ ] 2.4 Implement getTransactionHistory function
+    - Query chip_transaction table by user_id
+    - Return sorted by created_at descending
+    - _Requirements: 1.5_
+  - [ ]* 2.5 Write property test for transaction records
+    - **Property 3: Transaction records contain required fields**
+    - **Validates: Requirements 1.4**
+  - [ ]* 2.6 Write property test for purchase history
+    - **Property 4: Purchase history returns all user transactions**
+    - **Validates: Requirements 1.5**
+
+- [ ] 3. Implement Stripe webhook handler
+  - [ ] 3.1 Create webhook endpoint at /api/webhooks/stripe
+    - Parse raw body for signature verification
+    - Verify webhook signature using Stripe library
+    - _Requirements: 3.1, 3.2_
+  - [ ]* 3.2 Write property test for webhook signature validation
+    - **Property 8: Invalid webhook signatures are rejected**
+    - **Validates: Requirements 3.1, 3.2**
+  - [ ] 3.3 Implement idempotent event processing
+    - Check processed_webhook table before processing
+    - Insert event_id after successful processing
+    - _Requirements: 3.3, 3.4_
+  - [ ]* 3.4 Write property test for webhook idempotency
+    - **Property 9: Webhook processing is idempotent**
+    - **Validates: Requirements 3.3, 3.4**
+  - [ ] 3.5 Implement checkout.session.completed handler
+    - Extract user_id and package_id from session metadata
+    - Credit chips to user account
+    - Record transaction
+    - _Requirements: 1.1, 1.4_
+
+- [ ] 4. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 5. Implement daily bonus service
+  - [ ] 5.1 Create daily-bonus-service.js
+    - Implement canClaimBonus function with 24-hour check
+    - _Requirements: 2.1, 2.3_
+  - [ ]* 5.2 Write property test for bonus eligibility
+    - **Property 5: Daily bonus eligibility after 24 hours**
+    - **Validates: Requirements 2.1**
+  - [ ]* 5.3 Write property test for bonus rejection
+    - **Property 7: Daily bonus rejected within 24 hours**
+    - **Validates: Requirements 2.3**
+  - [ ] 5.4 Implement claimBonus function
+    - Verify eligibility, credit chips, update last_bonus_claim
+    - _Requirements: 2.2_
+  - [ ]* 5.5 Write property test for bonus credit amount
+    - **Property 6: Daily bonus credits fixed amount**
+    - **Validates: Requirements 2.2**
+  - [ ] 5.6 Implement grantWelcomeBonus function
+    - Credit welcome bonus for new users
+    - Set welcome_bonus_claimed flag
+    - _Requirements: 2.4_
+
+- [ ] 6. Implement chip package management
+  - [ ] 6.1 Create chip-package-service.js
+    - Implement getEnabledPackages function
+    - Implement validatePackage function
+    - _Requirements: 1.3, 5.2, 5.3_
+  - [ ]* 6.2 Write property test for package validation
+    - **Property 11: Chip package validation**
+    - **Validates: Requirements 5.2**
+  - [ ]* 6.3 Write property test for disabled packages
+    - **Property 12: Disabled packages are not purchasable**
+    - **Validates: Requirements 5.3**
+
+- [ ] 7. Implement API endpoints
+  - [ ] 7.1 Create GET /api/chips/packages endpoint
+    - Return enabled packages sorted by sort_order
+    - _Requirements: 1.3_
+  - [ ] 7.2 Create GET /api/chips/balance endpoint
+    - Return authenticated user's chip balance
+    - _Requirements: 1.1_
+  - [ ] 7.3 Create POST /api/chips/checkout endpoint
+    - Validate package, create Stripe session, return URL
+    - _Requirements: 1.1_
+  - [ ] 7.4 Create GET /api/chips/history endpoint
+    - Return user's transaction history
+    - _Requirements: 1.5_
+  - [ ] 7.5 Create GET /api/bonus/status endpoint
+    - Return canClaim status and nextClaimTime
+    - _Requirements: 2.1, 2.3_
+  - [ ] 7.6 Create POST /api/bonus/claim endpoint
+    - Process bonus claim, return new balance
+    - _Requirements: 2.2_
+
+- [ ] 8. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 9. Implement Facebook Canvas integration
+  - [ ] 9.1 Create facebook-canvas.js utility
+    - Implement detectContext function
+    - Implement resizeCanvas function
+    - _Requirements: 4.1, 4.2_
+  - [ ] 9.2 Update user authentication to link Facebook ID
+    - Store facebook_id when authenticating via Facebook
+    - _Requirements: 4.3_
+  - [ ]* 9.3 Write property test for Facebook user linkage
+    - **Property 10: Facebook user ID linkage**
+    - **Validates: Requirements 4.3**
+  - [ ] 9.4 Add standalone mode detection
+    - Function normally when not in Facebook iframe
+    - _Requirements: 4.4_
+
+- [ ] 10. Implement frontend chip store UI
+  - [ ] 10.1 Create chip-store.js frontend module
+    - Display chip packages with prices
+    - Handle checkout button clicks
+    - _Requirements: 1.3_
+  - [ ] 10.2 Create purchase success/cancel pages
+    - Handle Stripe redirect after checkout
+    - Display confirmation or error message
+    - _Requirements: 1.1, 1.2_
+  - [ ] 10.3 Add daily bonus UI component
+    - Show claim button or countdown timer
+    - _Requirements: 2.1, 2.2, 2.3_
+  - [ ] 10.4 Add chip balance display to header
+    - Show current balance, update after purchases
+    - _Requirements: 1.1_
+
+- [ ] 11. Update environment configuration
+  - [ ] 11.1 Add Stripe environment variables to .env.example
+    - STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PUBLISHABLE_KEY
+    - _Requirements: 1.1, 3.1_
+  - [ ] 11.2 Add bonus configuration variables
+    - DAILY_BONUS_AMOUNT, WELCOME_BONUS_AMOUNT
+    - _Requirements: 2.2, 2.4_
+  - [ ] 11.3 Update vercel.json for webhook endpoint
+    - Ensure raw body parsing for webhook signature verification
+    - _Requirements: 3.1_
+
+- [ ] 12. Final Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.

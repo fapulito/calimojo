@@ -12,11 +12,11 @@ has 'address_info' => sub {
 };
 
 has facebook_app_id => sub {
-   return $ENV{FACEBOOK_APP_ID} or die "FACEBOOK_APP_ID environment variable is required";
+   return $ENV{FACEBOOK_APP_ID} || 'development_app_id';
 };
 
 has facebook_secret => sub {
-   return $ENV{FACEBOOK_APP_SECRET} or die "FACEBOOK_APP_SECRET environment variable is required";
+   return $ENV{FACEBOOK_APP_SECRET} || 'development_secret';
 };
 
 has fb => sub {

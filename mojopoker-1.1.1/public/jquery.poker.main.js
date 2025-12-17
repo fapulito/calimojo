@@ -152,7 +152,14 @@
             });
         },
         auto_match: function(v) {
-            this.options.wsock.send(JSON.stringify(['auto_match', v]));
+            var ws = this.options.wsock;
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify(['auto_match', v]));
+            } else {
+                console.log('WebSocket not ready, waiting...');
+                var self = this;
+                setTimeout(function() { self.auto_match(v); }, 500);
+            }
         },
         fetch_cashier: function(v) {
             this.options.wsock.send(JSON.stringify(['fetch_cashier', v]));

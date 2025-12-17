@@ -6,6 +6,7 @@ with 'FB::Poker';
 use feature qw(state);
 
 #use DBI;
+use FB::Compat::Timer;
 use FB::Db;
 use SQL::Abstract;
 use Mojo::JSON qw(j);
@@ -42,12 +43,12 @@ sub _build_prize_timer {
     $t += 24 * 60 * 60;
 
     my $seconds = $t - localtime;
-    return EV::timer $seconds, 0, sub {
+    return FB::Compat::Timer::timer($seconds, 0, sub {
         $self->prize_timer( $self->_build_prize_timer );
         $self->db->reset_leaders;
         $self->_update_all_logins;
         $self->_notify_leaders;
-    };
+    });
 }
 
 has 'news' => (
@@ -942,11 +943,9 @@ sub BUILD {
     $self->command( { %{ $self->command }, %{ $self->poker_command } } );
     $self->_create_channel( { channel => 'main' } );
     $self->cycle_event(
-        EV::timer 300,
-        300,
-        sub {
+        FB::Compat::Timer::timer(300, 300, sub {
             $self->cycle300;
-        }
+        })
     );
 
     # Create test tables with house players on startup

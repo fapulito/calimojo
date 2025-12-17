@@ -14,7 +14,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' ? 'https://your-vercel-app.vercel.app' : 'http://localhost:3000',
+  origin: process.env.NODE_ENV === 'production' 
+    ? process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : process.env.APP_URL 
+    : 'http://localhost:3000',
   credentials: true
 }));
 
@@ -33,25 +35,31 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Facebook Strategy
-passport.use(new FacebookStrategy({
-    clientID: process.env.FACEBOOK_APP_ID,
-    clientSecret: process.env.FACEBOOK_APP_SECRET,
-    callbackURL: process.env.FACEBOOK_CALLBACK_URL || '/auth/facebook/callback',
-    profileFields: ['id', 'displayName', 'emails', 'photos']
-  },
-  function(accessToken, refreshToken, profile, done) {
-    // Here you would typically find or create a user in your database
-    const user = {
-      id: profile.id,
-      displayName: profile.displayName,
-      email: profile.emails ? profile.emails[0].value : null,
-      photo: profile.photos ? profile.photos[0].value : null,
-      accessToken: accessToken
-    };
-    return done(null, user);
-  }
-));
+// Facebook Strategy - only configure if credentials are provided
+const facebookAuthEnabled = process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET;
+
+if (facebookAuthEnabled) {
+  passport.use(new FacebookStrategy({
+      clientID: process.env.FACEBOOK_APP_ID,
+      clientSecret: process.env.FACEBOOK_APP_SECRET,
+      callbackURL: process.env.FACEBOOK_CALLBACK_URL || '/auth/facebook/callback',
+      profileFields: ['id', 'displayName', 'emails', 'photos']
+    },
+    function(accessToken, refreshToken, profile, done) {
+      // Here you would typically find or create a user in your database
+      const user = {
+        id: profile.id,
+        displayName: profile.displayName,
+        email: profile.emails ? profile.emails[0].value : null,
+        photo: profile.photos ? profile.photos[0].value : null,
+        accessToken: accessToken
+      };
+      return done(null, user);
+    }
+  ));
+} else {
+  console.log('Facebook Auth: Disabled (FACEBOOK_APP_ID or FACEBOOK_APP_SECRET not set)');
+}
 
 // Serialize and deserialize user
 passport.serializeUser((user, done) => {
@@ -60,9 +68,11 @@ passport.serializeUser((user, done) => {
 
 passport.deserializeUser((id, done) => {
   // Here you would typically look up the user by id in your database
+  const isGuest = id.toString().startsWith('dev_guest_');
   const user = {
     id: id,
-    displayName: 'Facebook User',
+    displayName: isGuest ? 'Dev Guest' : 'Facebook User',
+    isGuest: isGuest
     // In a real app, you would fetch this from your database
   };
   done(null, user);
@@ -73,18 +83,40 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
-// Facebook Auth Routes
-app.get('/auth/facebook',
-  passport.authenticate('facebook', { scope: ['email'] })
-);
+// Facebook Auth Routes - only register if Facebook auth is enabled
+if (facebookAuthEnabled) {
+  app.get('/auth/facebook',
+    passport.authenticate('facebook', { scope: ['email'] })
+  );
 
-app.get('/auth/facebook/callback',
-  passport.authenticate('facebook', { failureRedirect: '/login' }),
-  function(req, res) {
-    // Successful authentication, redirect home.
-    res.redirect('/');
-  }
-);
+  app.get('/auth/facebook/callback',
+    passport.authenticate('facebook', { failureRedirect: '/login' }),
+    function(req, res) {
+      // Successful authentication, redirect home.
+      res.redirect('/');
+    }
+  );
+} else {
+  // Dev mode: auto-login as guest when Facebook auth is not configured
+  app.get('/auth/facebook', (req, res) => {
+    // Create a mock guest user for development
+    const guestUser = {
+      id: 'dev_guest_' + Date.now(),
+      displayName: 'Dev Guest',
+      email: 'guest@localhost',
+      photo: null,
+      isGuest: true
+    };
+    
+    req.login(guestUser, (err) => {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to create guest session' });
+      }
+      console.log('Dev mode: Guest user logged in');
+      res.redirect('/');
+    });
+  });
+}
 
 // Logout route
 app.get('/logout', (req, res) => {
@@ -113,7 +145,7 @@ app.get('/api/poker/games', (req, res) => {
   // In a real implementation, this would return available poker games
   res.json({
     games: [
-      { id: 1, name: 'Texas Hold'em', players: '2-10', type: 'ring' },
+      { id: 1, name: "Texas Hold'em", players: '2-10', type: 'ring' },
       { id: 2, name: 'Omaha Hi-Lo', players: '2-9', type: 'ring' },
       { id: 3, name: '7 Card Stud', players: '2-8', type: 'ring' }
     ]

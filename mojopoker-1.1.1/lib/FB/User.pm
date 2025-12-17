@@ -1,5 +1,5 @@
 package FB::User;
-use EV;
+eval { require EV }; # Optional on Windows
 use Moo;
 
 has 'db' => ( is => 'rw', );
