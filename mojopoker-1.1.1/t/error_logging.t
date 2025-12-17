@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use Test::More;
 use File::Temp;
+use DBI;
 use lib 'lib';
 
 # Test error logging functionality
@@ -15,8 +16,21 @@ my $db_path = $temp_dir->dirname;
 $ENV{DATABASE_TYPE} = 'sqlite';
 $ENV{SQLITE_PATH} = $db_path;
 
-# Initialize database with schema
-system("sqlite3 $db_path/fb.db < db/fb.schema 2>&1");
+# Initialize database with schema (safe method without shell injection)
+my $schema_file = 'db/fb.schema';
+if (-f $schema_file) {
+    open(my $schema_fh, '<', $schema_file) or die "Cannot open schema file: $!";
+    my $schema_sql = do { local $/; <$schema_fh> };
+    close($schema_fh);
+    
+    my $temp_dbh = DBI->connect("dbi:SQLite:dbname=$db_path/fb.db", '', '', { RaiseError => 0, PrintError => 0 });
+    # Execute each statement separately (schema may have multiple statements)
+    foreach my $statement (split /;/, $schema_sql) {
+        next unless $statement =~ /\S/;  # Skip empty statements
+        $temp_dbh->do($statement);
+    }
+    $temp_dbh->disconnect();
+}
 
 require_ok('FB::Db');
 

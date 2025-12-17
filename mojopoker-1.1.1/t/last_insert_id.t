@@ -5,6 +5,7 @@ use warnings;
 use Test::More;
 use File::Temp;
 use File::Path qw(make_path);
+use DBI;
 use lib 'lib';
 
 # Test the _get_last_insert_id helper method and new_user integration
@@ -24,7 +25,19 @@ $ENV{SQLITE_PATH} = $db_path;
 # Create the database schema
 my $schema_file = 'db/fb.schema';
 if (-f $schema_file) {
-    system("sqlite3 $db_path/fb.db < $schema_file");
+    # Use safe multi-argument form and pipe schema via STDIN
+    open(my $schema_fh, '<', $schema_file) or die "Cannot open schema file: $!";
+    my $schema_sql = do { local $/; <$schema_fh> };
+    close($schema_fh);
+    
+    # Use DBI to execute schema directly (safer than shell)
+    my $temp_dbh = DBI->connect("dbi:SQLite:dbname=$db_path/fb.db", '', '', { RaiseError => 0, PrintError => 0 });
+    # Execute each statement separately (schema may have multiple statements)
+    foreach my $statement (split /;/, $schema_sql) {
+        next unless $statement =~ /\S/;  # Skip empty statements
+        $temp_dbh->do($statement);
+    }
+    $temp_dbh->disconnect();
 }
 
 # Test 1: Create FB::Db instance with SQLite

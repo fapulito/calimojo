@@ -5,6 +5,7 @@ use warnings;
 use Test::More;
 use File::Temp;
 use File::Path qw(make_path);
+use DBI;
 use lib 'lib';
 
 # Test transaction support
@@ -15,9 +16,22 @@ my $temp_dir = File::Temp->newdir();
 local $ENV{DATABASE_TYPE} = 'sqlite';
 local $ENV{SQLITE_PATH} = $temp_dir->dirname;
 
-# Create the database schema
+# Create the database schema (safe method without shell injection)
 my $db_file = $temp_dir->dirname . '/fb.db';
-system("sqlite3 $db_file < db/fb.schema 2>&1");
+my $schema_file = 'db/fb.schema';
+if (-f $schema_file) {
+    open(my $schema_fh, '<', $schema_file) or die "Cannot open schema file: $!";
+    my $schema_sql = do { local $/; <$schema_fh> };
+    close($schema_fh);
+    
+    my $temp_dbh = DBI->connect("dbi:SQLite:dbname=$db_file", '', '', { RaiseError => 0, PrintError => 0 });
+    # Execute each statement separately (schema may have multiple statements)
+    foreach my $statement (split /;/, $schema_sql) {
+        next unless $statement =~ /\S/;  # Skip empty statements
+        $temp_dbh->do($statement);
+    }
+    $temp_dbh->disconnect();
+}
 
 require FB::Db;
 
