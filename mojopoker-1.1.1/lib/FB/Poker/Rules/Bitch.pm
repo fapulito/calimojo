@@ -1,5 +1,6 @@
 package FB::Poker::Rules::Bitch;
 use Moo::Role;
+use FB::Compat::Timer;
 
 with 'FB::Poker::Rules::Stud';
 
@@ -61,7 +62,7 @@ after 'set_next_round' => sub {
   }
 
   $self->_notify_watch( [ 'table_update', { hide_buttons => 1 } ] );
-  $self->redeal_event( EV::timer 5, 0, sub {
+  $self->redeal_event( FB::Compat::Timer::timer(5, 0, sub {
     for my $c ( @{ $self->chairs } ) {
       $c->cards( [] );
       my $r = {
@@ -76,7 +77,7 @@ after 'set_next_round' => sub {
     $self->no_ante($noa);
     $self->game_over(0);
     $self->begin_new_round;
-  });
+  }));
 };
 
 1;

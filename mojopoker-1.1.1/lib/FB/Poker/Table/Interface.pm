@@ -4,6 +4,7 @@ use Moo::Role;
 #use Time::HiRes qw(time);
 #use Data::Dumper;
 use POSIX qw(ceil);
+use FB::Compat::Timer;
 
 #has 'director_id' => (
 #  is       => 'rw',
@@ -96,7 +97,7 @@ sub auto_start_game {
 #    && $self->auto_start_count >= $self->auto_start )
   {
       $self->auto_start_event(
-      EV::timer $delay,
+      FB::Compat::Timer::timer($delay,
       0,
       sub {
         $self->begin_auto_start;
@@ -109,7 +110,7 @@ sub auto_start_game {
         else {
           $self->lobby_data( $self->_build_lobby_data );
         }
-      }
+      })
     );
   }
   else {
@@ -776,11 +777,11 @@ sub set_turn_clock {
 
   $self->turn_event(undef);
   $self->turn_event(
-    EV::timer $self->turn_clock,
+    FB::Compat::Timer::timer($self->turn_clock,
     0,
     sub {
       $self->activate_bank;
-    }
+    })
   );
 }
 
@@ -819,11 +820,11 @@ sub activate_bank {
   $self->turn_event(undef);
 
   $self->turn_event(
-    EV::timer $bank,
+    FB::Compat::Timer::timer($bank,
     0,
     sub {
       $self->timesup;
-    }
+    })
   );
 }
 
@@ -856,11 +857,12 @@ sub _begin_new_action {
   my $res  = [
     'begin_new_action',
     {
-      round     => $self->round,
-      action    => $self->action,
-      last_bet  => $self->last_bet,
-      call_amt  => $self->_fetch_call_amt,
-      valid_act => $self->_fetch_valid_act,
+      round      => $self->round,
+      action     => $self->action,
+      last_bet   => $self->last_bet,
+      call_amt   => $self->_fetch_call_amt,
+      valid_act  => $self->_fetch_valid_act,
+      turn_clock => $self->turn_clock,
     }
   ];
   if ( $self->legal_action('bet') || $self->legal_action('bring') ) {

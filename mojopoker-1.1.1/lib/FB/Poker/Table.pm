@@ -2,6 +2,7 @@ package FB::Poker::Table;
 use Moo;
 use FB::Poker::Dealer;
 use FB::Poker::Chair;
+use FB::Compat::Timer;
 
 #use Time::HiRes qw(time);
 use List::Util qw(sum);
@@ -461,13 +462,13 @@ sub auto_play {
   $self->auto_play_event(undef);
 
   $self->auto_play_event(
-    EV::timer $delay,
+    FB::Compat::Timer::timer($delay,
     0,
     sub {
       $self->round( $self->next_round );
       $self->round_action( $self->round );
       $self->auto_play($delay) unless $self->game_over;
-    }
+    })
   );
 }
 

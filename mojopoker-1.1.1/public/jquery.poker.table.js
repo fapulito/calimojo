@@ -646,6 +646,7 @@
                 action: function(value) {
                     o.action = value;
                     self._hide_buttons();
+                    self._clearTurnClock();
                     var seats = el.find('.seat').removeClass('active');
                     seats.find('.card.selected').removeClass('selected').animate({
                         opacity: '1',
@@ -771,8 +772,20 @@
             el.find(".dealer-form").hide();
             el.find('.seat.active').removeClass('active');
             self._hide_buttons();
+            self._clearTurnClock();
             self._sweep_pot();
             //self._clear_table();
+        },
+        _clearTurnClock: function() {
+            var self = this,
+                o = self.options,
+                el = self.element;
+            
+            if (o.turnClockInterval) {
+                clearInterval(o.turnClockInterval);
+                o.turnClockInterval = null;
+            }
+            el.find(".turn-timer").remove();
         },
         showdown: function(opts) {
             var self = this,
@@ -1246,7 +1259,7 @@
 
             o.dfd.promise().then(function() {
                 el.find(".seat.active").removeClass("active");
-                el.find(".seat" + opts.action).addClass("active");
+                var activeSeat = el.find(".seat" + opts.action).addClass("active");
                 self.table_update({
                     small_bet: opts.small_bet,
                     max_bet: opts.max_bet,
@@ -1259,7 +1272,47 @@
                     call_amt: opts.call_amt,
                     action: opts.action
                 });
+                
+                // Start turn clock countdown
+                if (opts.turn_clock) {
+                    self._startTurnClock(opts.turn_clock, activeSeat);
+                }
             });
+        },
+        _startTurnClock: function(seconds, seat) {
+            var self = this,
+                o = self.options,
+                el = self.element;
+            
+            // Clear any existing timer
+            if (o.turnClockInterval) {
+                clearInterval(o.turnClockInterval);
+            }
+            
+            // Remove existing timer display
+            el.find(".turn-timer").remove();
+            
+            // Create timer display on the active seat
+            var timerEl = $("<div />").addClass("turn-timer").html(seconds);
+            seat.append(timerEl);
+            
+            var remaining = seconds;
+            o.turnClockInterval = setInterval(function() {
+                remaining--;
+                if (remaining <= 0) {
+                    clearInterval(o.turnClockInterval);
+                    timerEl.remove();
+                } else {
+                    timerEl.html(remaining);
+                    // Add warning class when low on time
+                    if (remaining <= 10) {
+                        timerEl.addClass("warning");
+                    }
+                    if (remaining <= 5) {
+                        timerEl.addClass("critical");
+                    }
+                }
+            }, 1000);
         },
         begin_new_round: function(opts) {
             var self = this,

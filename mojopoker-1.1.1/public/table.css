@@ -1,3 +1,36 @@
+/* Turn Timer */
+.turn-timer {
+  position: absolute;
+  z-index: 15;
+  top: -15%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: #00ff00;
+  font-size: 1.4em;
+  font-weight: bold;
+  padding: 0.3em 0.6em;
+  border-radius: 4px;
+  min-width: 2em;
+  text-align: center;
+}
+
+.turn-timer.warning {
+  color: #ffff00;
+  background: rgba(80, 80, 0, 0.9);
+}
+
+.turn-timer.critical {
+  color: #ff0000;
+  background: rgba(80, 0, 0, 0.9);
+  animation: pulse 0.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
 /* Special buttons  */
 
 .leave-all {
