@@ -22,13 +22,18 @@ Automated server setup for Mojo Poker backend on DigitalOcean.
 
 ## Quick Start
 
-1. **Configure inventory**:
+1. **Install required Ansible collections**:
+   ```bash
+   ansible-galaxy collection install -r requirements.yml
+   ```
+
+2. **Configure inventory**:
    ```bash
    cd ansible
    # Edit inventory.ini - replace YOUR_DROPLET_IP with actual IP
    ```
 
-2. **Configure variables**:
+3. **Configure variables**:
    ```bash
    # Edit group_vars/mojopoker.yml with your settings:
    # - domain_name
@@ -36,7 +41,7 @@ Automated server setup for Mojo Poker backend on DigitalOcean.
    # - Facebook app credentials (optional)
    ```
 
-3. **Run the playbook**:
+4. **Run the playbook**:
    ```bash
    ansible-playbook -i inventory.ini playbook.yml
    ```

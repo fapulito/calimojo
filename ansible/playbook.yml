@@ -6,6 +6,22 @@
   hosts: mojopoker
   become: yes
   
+  pre_tasks:
+    - name: Check for community.general collection (required for cpanm module)
+      ansible.builtin.command: ansible-galaxy collection list community.general
+      delegate_to: localhost
+      become: no
+      register: collection_check
+      changed_when: false
+      failed_when: false
+
+    - name: Fail if community.general collection is not installed
+      ansible.builtin.fail:
+        msg: |
+          The community.general collection is required but not installed.
+          Please run: ansible-galaxy collection install -r requirements.yml
+      when: collection_check.rc != 0
+
   tasks:
     # ==========================================
     # System Updates and Base Packages
