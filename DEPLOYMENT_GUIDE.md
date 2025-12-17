@@ -282,7 +282,9 @@ In Vercel Dashboard → Your Project → Settings → Environment Variables:
 | `DATABASE_URL` | Your NeonDB connection string |
 | `FACEBOOK_APP_ID` | Your Facebook App ID |
 | `FACEBOOK_APP_SECRET` | Your Facebook App Secret |
-| `SESSION_SECRET` | Random 32+ character string |
+| `JWT_SECRET` | Random 32+ character string (for stateless auth) |
+
+> **Note**: The Vercel frontend uses JWT (JSON Web Tokens) stored in HTTP-only cookies for authentication. This is stateless and works perfectly with Vercel's serverless architecture - no Redis or session store needed.
 
 ---
 
