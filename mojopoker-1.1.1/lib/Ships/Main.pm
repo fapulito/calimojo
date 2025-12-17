@@ -72,7 +72,7 @@ sub delete {
       #verified; okay to do something with $data
        my $read  = <<SQL;
 SELECT id, bookmark
-FROM user
+FROM users
 WHERE facebook_id = $data->{user_id}
 SQL
        my ($id, $bookmark) = $self->app->fb->db->dbh->selectrow_array($read);
@@ -83,7 +83,7 @@ SQL
        }
 
        my $delete = <<SQL;
-UPDATE user SET facebook_id = NULL, facebook_deleted = CURRENT_TIMESTAMP
+UPDATE users SET facebook_id = NULL, facebook_deleted = CURRENT_TIMESTAMP
 WHERE id = $id
 SQL
        $self->app->fb->db->dbh->do($delete);
@@ -103,7 +103,7 @@ sub deletion {
 
     my $sql  = <<SQL;
 SELECT facebook_deleted 
-FROM user
+FROM users
 WHERE bookmark = '$id'
 SQL
 

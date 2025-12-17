@@ -56,7 +56,7 @@ sub _build_sql {
 
 sub new_user {
    my ($self, $opts) = @_;
-   my ( $stmt, @bind ) = $self->sql->insert( 'user', $opts );
+   my ( $stmt, @bind ) = $self->sql->insert( 'users', $opts );
    my $sth = $self->dbh->prepare($stmt);
    $sth->execute(@bind);
 
@@ -72,7 +72,7 @@ sub new_user {
 
 sub fetch_user {
     my ( $self, $opts ) = @_;
-    my ( $stmt, @bind ) = $self->sql->select( 'user', '*', $opts );
+    my ( $stmt, @bind ) = $self->sql->select( 'users', '*', $opts );
     my $sth = $self->dbh->prepare($stmt);
     $sth->execute(@bind);
     my $href = $sth->fetchrow_hashref;
@@ -86,7 +86,7 @@ sub update_user {
     my ( $self, $opts, $id ) = @_;
     $opts->{last_visit} = time;
     my ( $stmt, @bind ) =
-      $self->sql->update( 'user', $opts, { id => $id } );
+      $self->sql->update( 'users', $opts, { id => $id } );
     my $sth = $self->dbh->prepare($stmt);
     $sth->execute(@bind);
     return $self->dbh->err ? undef : 1;  
@@ -95,8 +95,8 @@ sub update_user {
 sub fetch_leaders {
     my $self = shift;
     my $sql  = <<SQL;
-SELECT username, ROUND((chips - invested)*1.00 / invested, 2) * 100 AS profit, chips
-FROM user
+SELECT username, ROUND((chips - invested)*1.00 / NULLIF(invested, 0), 2) * 100 AS profit, chips
+FROM users
 WHERE id != 1 
 ORDER BY profit DESC
 LIMIT 20
@@ -109,7 +109,7 @@ sub reset_leaders {
     my $self = shift;
 
     my $sql = <<SQL;
-UPDATE user 
+UPDATE users 
 SET chips = 400, invested = 400 
 SQL
     return $self->dbh->do($sql);
@@ -119,7 +119,7 @@ SQL
 sub debit_chips {
     my ( $self, $user_id, $chips ) = @_;
     my $sql = <<SQL;
-UPDATE user 
+UPDATE users 
 SET chips = chips - $chips 
 WHERE id = $user_id
 SQL
@@ -129,7 +129,7 @@ SQL
 sub credit_chips {
     my ( $self, $user_id, $chips ) = @_;
     my $sql = <<SQL;
-UPDATE user 
+UPDATE users 
 SET chips = chips + $chips 
 WHERE id = $user_id 
 SQL
@@ -140,7 +140,7 @@ sub fetch_chips {
     my ( $self, $user_id ) = @_;
     my $sql = <<SQL;
 SELECT chips 
-FROM user 
+FROM users 
 WHERE id = ?
 SQL
 
@@ -153,7 +153,7 @@ SQL
 sub credit_invested {
     my ( $self, $user_id, $chips ) = @_;
     my $sql = <<SQL;
-UPDATE user 
+UPDATE users 
 SET invested = invested + $chips
 WHERE id = $user_id 
 SQL
