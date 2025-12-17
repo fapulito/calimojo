@@ -410,6 +410,12 @@ sub _guest_login {
     my ( $self, $opts ) = @_;
     my $login = $self->_new_login($opts);
     return unless $login;
+    
+    # Create a guest user with starting chips immediately on connect
+    my $guest_opts = { chips => 400, invested => 400 };
+    $login->user( $self->db->new_user($guest_opts) );
+    $self->user_map->{ $login->user->id } = $login->id;
+    
     $self->join_channel( $login, { channel => 'main' } );
 
     #$self->login_list->{ $login->id } = $login;
