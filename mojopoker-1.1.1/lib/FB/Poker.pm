@@ -1365,9 +1365,8 @@ sub check_house_player_action {
     my $player = $chair->player;
     return unless $player;
     
-    # Check if this is a house player by username pattern
-    my $username = $player->username || '';
-    return unless $username =~ /^HousePlayer\d+$/;
+    # Check if this is a house player using table's detection method
+    return unless $table->_is_house_player($table->action);
     
     # Get the login for this player
     my $login = $self->_find_login_for_player($player);
