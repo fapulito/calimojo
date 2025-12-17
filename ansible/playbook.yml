@@ -98,6 +98,18 @@
     # ==========================================
     # Application Deployment
     # ==========================================
+    - name: Check if application directory exists
+      stat:
+        path: "{{ app_dir }}"
+      register: app_dir_stat
+
+    - name: Create timestamped backup of existing app directory
+      archive:
+        path: "{{ app_dir }}"
+        dest: "{{ app_dir }}-backup-{{ ansible_date_time.iso8601_basic_short }}.tar.gz"
+        format: gz
+      when: app_dir_stat.stat.exists and app_dir_stat.stat.isdir
+
     - name: Create application directory
       file:
         path: "{{ app_dir }}"
@@ -106,12 +118,12 @@
         group: "{{ app_user }}"
         mode: '0755'
 
-    - name: Clone repository
+    - name: Clone or update repository
       git:
         repo: "{{ repo_url }}"
         dest: "{{ app_dir }}"
         version: "{{ repo_branch }}"
-        force: yes
+        update: yes
       become_user: "{{ app_user }}"
 
     - name: Set ownership of app directory
