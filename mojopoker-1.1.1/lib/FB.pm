@@ -419,12 +419,21 @@ sub _guest_login {
 sub guest_login {
     my ( $self, $login ) = @_;
 
+    # Create a guest user with starting chips if not already logged in
+    unless ( $login->has_user ) {
+        my $guest_opts = { chips => 400, invested => 400 };
+        $login->user( $self->db->new_user($guest_opts) );
+        $self->user_map->{ $login->user->id } = $login->id;
+    }
+
     $self->login_list->{ $login->id } = $login;
     $login->send(
         [
             'guest_login',
             {
                 login_id => $login->id,
+                user_id  => $login->user->id,
+                chips    => $self->db->fetch_chips( $login->user->id ),
                 timer    => int( $self->prize_timer->remaining ),
             }
         ]
