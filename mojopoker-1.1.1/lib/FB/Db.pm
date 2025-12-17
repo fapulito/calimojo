@@ -434,7 +434,10 @@ sub new_user {
    }
    
    # Set user object attributes
-   # Note: reg_date and last_visit are already set and formatted above
+   # Parse timestamps back to Unix format for consistency in application
+   $opts->{reg_date} = $self->_parse_timestamp($opts->{reg_date}) if defined $opts->{reg_date};
+   $opts->{last_visit} = $self->_parse_timestamp($opts->{last_visit}) if defined $opts->{last_visit};
+   
    $opts->{level}    = 2;
    $opts->{handle}   = $opts->{username} if $opts->{username};
    $opts->{bookmark} = hmac_sha1_hex( $opts->{id}, $self->secret );

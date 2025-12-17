@@ -179,3 +179,43 @@ $temp_dbh->disconnect();
 - ✅ Direct DBI execution - more reliable
 - ✅ Better error handling
 - ✅ All tests still pass (10/10, 16/16, 20/20)
+
+
+### 5. PostgreSQL Schema Missing reg_date Column
+**Problem:** CI tests failing with error: `column "reg_date" of relation "users" does not exist`
+
+**Root Cause:** The PostgreSQL schema (`mojopoker-1.1.1/db/postgres.schema`) was missing the `reg_date` column that the `FB::Db` module expects when creating users.
+
+**Fix:** 
+- Added `reg_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP` to the users table in `postgres.schema`
+- Column positioned before `last_visit` for logical consistency with SQLite schema
+
+**Files Modified:**
+- `mojopoker-1.1.1/db/postgres.schema`
+
+### 6. PostgreSQL Timestamp Parsing in new_user
+**Problem:** CI tests failing because timestamps returned from `new_user` were in PostgreSQL TIMESTAMP format instead of Unix timestamps.
+
+**Error:** Tests expected Unix timestamps but got ISO 8601 format (e.g., "2024-12-17 12:34:56")
+
+**Root Cause:** After inserting a user into PostgreSQL, the `new_user` method was returning timestamps in database format instead of parsing them back to Unix timestamps for application consistency.
+
+**Fix:**
+- Added `_parse_timestamp` calls in `new_user` method after database insertion
+- Ensures `reg_date` and `last_visit` are converted back to Unix timestamps before creating the `FB::User` object
+- Maintains consistency with `fetch_user` which already parses timestamps
+
+**Code Change:**
+```perl
+# Parse timestamps back to Unix format for consistency in application
+$opts->{reg_date} = $self->_parse_timestamp($opts->{reg_date}) if defined $opts->{reg_date};
+$opts->{last_visit} = $self->_parse_timestamp($opts->{last_visit}) if defined $opts->{last_visit};
+```
+
+**Files Modified:**
+- `mojopoker-1.1.1/lib/FB/Db.pm` (lines 437-438)
+
+**Impact:** 
+- Ensures all user objects have Unix timestamps regardless of database type
+- Fixes failing timestamp_handling.t tests for PostgreSQL
+- Maintains backward compatibility with existing code
