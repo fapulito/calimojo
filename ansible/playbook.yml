@@ -131,6 +131,15 @@
       tags: [deploy]
       notify: Restart mojopoker
 
+    - name: Ensure lib/FB directory structure exists
+      file:
+        path: "{{ app_dir }}/mojopoker-1.1.1/lib/FB"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: '0755'
+      tags: [deploy]
+
     - name: Set ownership of app directory
       file:
         path: "{{ app_dir }}"
