@@ -1,0 +1,39 @@
+# Don't copy these to Docker image
+.git
+.github
+.env
+.env.local
+*.md
+README.md
+DEPLOYMENT_GUIDE.md
+CODE_REVIEW.md
+LEGAL_DATA_REQUEST_POLICY.md
+LICENSE
+.travis.yml
+.gitignore
+
+# Test files
+t/
+*.t
+
+# Local development
+*.pid
+*.log
+*.db
+db/*.db
+
+# Ansible
+ansible/
+
+# Vercel frontend
+vercel/
+
+# Documentation
+SCREENSHOT.png
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
