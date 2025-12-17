@@ -6,8 +6,7 @@ use feature qw(say);
 use lib './lib';
 
 # Load .env file if it exists
-if (-f '.env') {
-    open my $fh, '<', '.env' or warn "Could not open .env: $!";
+if (-f '.env' && open my $fh, '<', '.env') {
     while (<$fh>) {
         chomp;
         next if /^\s*#/ || /^\s*$/;  # Skip comments and empty lines
@@ -18,6 +17,8 @@ if (-f '.env') {
         }
     }
     close $fh;
+} elsif (-f '.env') {
+    warn "Could not open .env: $!";
 }
 
 use Ships;
