@@ -108,13 +108,10 @@ around 'join' => sub {
   #my $balance = $login->user->fetch_chips || 0;
   my $debit = $opts->{chips};
   
-  warn "DEBUG JOIN: user_id=$user_id balance=$balance debit=$debit table_min=" . $self->table_min . " table_max=" . $self->table_max;
-  
   if ( $balance < $debit ) {
     $r->{success} = 0;
     $r->{message} = 'Not enough chips.';
     $r->{balance} = $balance;
-    warn "DEBUG JOIN FAILED: balance $balance < debit $debit";
     return $r;
   }
 

@@ -412,6 +412,13 @@ sub create_ring {
 sub join_ring {
     my ( $self, $login, $opts ) = @_;
     my $response = [ 'join_ring_res', { success => 0 } ];
+    
+    unless ( $login->has_user ) {
+        $response->[1] = { success => 0, message => 'Please register or login first.', %$opts };
+        $login->send($response);
+        return;
+    }
+    
     my $table = $self->table_list->{ $opts->{table_id} };
 
     unless ( defined $table ) {
