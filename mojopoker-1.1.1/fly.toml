@@ -1,0 +1,68 @@
+# Fly.io configuration for Mojo Poker
+# https://fly.io/docs/reference/configuration/
+
+app = "mojopoker"
+primary_region = "iad"  # US East (Ashburn) - change to your preferred region
+
+# Build configuration
+[build]
+  dockerfile = "Dockerfile"
+
+# Environment variables (non-sensitive)
+[env]
+  MOJO_MODE = "production"
+  # PORT is automatically set by Fly.io
+
+# HTTP service configuration
+[[services]]
+  internal_port = 8080
+  protocol = "tcp"
+  auto_stop_machines = false  # Keep machines running for WebSocket connections
+  auto_start_machines = true
+  min_machines_running = 1    # Always keep at least 1 machine running
+
+  # HTTP/HTTPS ports
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+    force_https = true
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+
+  # Connection limits (important for WebSocket poker game)
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 1000   # Max connections per machine
+    soft_limit = 500    # Start scaling at 500 connections
+
+  # Health checks
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout = "2s"
+    grace_period = "10s"
+
+  [[services.http_checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "get"
+    path = "/"
+    protocol = "http"
+
+# VM resources
+[vm]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512  # Start small, scale up if needed
+
+# Scaling configuration
+[scaling]
+  min_count = 1
+  max_count = 3  # Scale up to 3 machines under load
+
+# Metrics
+[metrics]
+  port = 9091
+  path = "/metrics"

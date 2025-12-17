@@ -3,6 +3,16 @@ requires 'DBD::SQLite';
 requires 'DBD::Pg';
 requires 'Data::Dumper';
 requires 'Getopt::Long';
+requires 'Moo';
+requires 'Mojo::IOLoop';
+requires 'Mojolicious';
+requires 'Algorithm::Combinatorics';
+requires 'Digest::SHA';
+requires 'JSON';
+requires 'MIME::Base64';
+requires 'SQL::Abstract';
+requires 'Tie::IxHash';
+requires 'Crypt::Eksblowfish';
 
 on 'test' => sub {
     requires 'Test::More', '>= 1.302';

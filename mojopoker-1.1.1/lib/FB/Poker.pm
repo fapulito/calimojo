@@ -163,6 +163,9 @@ sub _build_poker_command {
         'draw'  => [ \&draw,  { table_id => 1, card_idx => 1, tour_id => 0 }, 2 ],
         'discard' =>
           [ \&discard, { table_id => 1, card_idx => 1, tour_id => 0 }, 2 ],
+        
+        # Requirements: 11.1, 11.2, 11.3 - Set auto-action preferences
+        'set_auto_action' => [ \&set_auto_action, { table_id => 1, auto_action => 1, auto_call_limit => 0 }, 2 ],
 
       # tournaments
       #'create_tour' => [
@@ -223,6 +226,10 @@ sub _build_poker_option {
             }
             return 1;
         },
+        
+        # Requirements: 11.1, 11.2, 11.3 - Validate auto-action values
+        auto_action => qr/^(fold|check_fold|call_\d+)$/,
+        auto_call_limit => qr/^\d{1,10}$/,
     );
 
 =pod
@@ -976,6 +983,88 @@ sub draw {
     }
 }
 
+# Requirements: 11.1, 11.2, 11.3 - Set auto-action preferences
+sub set_auto_action {
+    my ( $self, $login, $opts ) = @_;
+    my $response = ['set_auto_action_res'];
+    
+    # Validate that user is logged in
+    unless ( $login->has_user ) {
+        $response->[1] = { 
+            success => 0, 
+            message => 'Must be logged in to set auto-action preferences' 
+        };
+        $login->send($response);
+        return;
+    }
+    
+    # Get the table
+    my $table = $self->table_list->{ $opts->{table_id} };
+    unless ($table) {
+        $response->[1] = { 
+            success => 0, 
+            message => 'Table not found',
+            table_id => $opts->{table_id}
+        };
+        $login->send($response);
+        return;
+    }
+    
+    # Find the player's chair at this table
+    my $chair;
+    for my $c ( @{ $table->chairs } ) {
+        if ( $c->has_player && 
+             $c->player->has_login && 
+             $c->player->login->id eq $login->id ) {
+            $chair = $c;
+            last;
+        }
+    }
+    
+    unless ($chair) {
+        $response->[1] = { 
+            success => 0, 
+            message => 'You are not seated at this table',
+            table_id => $opts->{table_id}
+        };
+        $login->send($response);
+        return;
+    }
+    
+    # Validate auto_action value (fold, check_fold, call_N)
+    my $auto_action = $opts->{auto_action};
+    unless ( $auto_action =~ /^(fold|check_fold|call_\d+)$/ ) {
+        $response->[1] = { 
+            success => 0, 
+            message => 'Invalid auto_action value. Must be fold, check_fold, or call_N',
+            auto_action => $auto_action
+        };
+        $login->send($response);
+        return;
+    }
+    
+    # Set the auto-action preference
+    $chair->auto_action($auto_action);
+    
+    # If it's a call_N action, extract and set the limit
+    if ( $auto_action =~ /^call_(\d+)$/ ) {
+        $chair->auto_call_limit($1);
+    } elsif ( exists $opts->{auto_call_limit} ) {
+        $chair->auto_call_limit($opts->{auto_call_limit});
+    }
+    
+    $response->[1] = {
+        success => 1,
+        table_id => $opts->{table_id},
+        chair => $chair->index,
+        auto_action => $chair->auto_action,
+        auto_call_limit => $chair->auto_call_limit,
+        message => 'Auto-action preference updated'
+    };
+    
+    $login->send($response);
+}
+
 # tournaments
 
 #sub _fetch_tour_opts {
@@ -1259,6 +1348,104 @@ sub _table_opts {
     }
     $response->[1] = { success => 1, table_id => $table->table_id, %parm };
     return $response;
+}
+
+# Check if current player is a house player and trigger strategy
+# Requirements: 4.1, 4.2 - House player actions integrate with game engine
+sub check_house_player_action {
+    my ($self, $table) = @_;
+    
+    return unless defined $table;
+    return unless defined $table->action;
+    return if $table->game_over;
+    
+    my $chair = $table->chairs->[$table->action];
+    return unless $chair && $chair->has_player;
+    
+    my $player = $chair->player;
+    return unless $player;
+    
+    # Check if this is a house player using table's detection method
+    return unless $table->_is_house_player($table->action);
+    
+    # Get the login for this player
+    my $login = $self->_find_login_for_player($player);
+    return unless $login;
+    
+    # Use strategy manager to decide action
+    my $decision = $self->strategy_manager->decide_action($table, $chair);
+    
+    # Execute the decided action through existing validation
+    # Requirement 4.2: Actions go through existing validation logic
+    $self->_execute_house_player_action($login, $table, $decision);
+}
+
+# Find login object for a player
+sub _find_login_for_player {
+    my ($self, $player) = @_;
+    
+    # Search through login_list for matching user
+    for my $login_id (keys %{$self->login_list}) {
+        my $login = $self->login_list->{$login_id};
+        
+        # Defensive checks: ensure all required objects are defined
+        next unless $login->has_user;
+        next unless $player->has_login;
+        next unless $player->login->has_user;
+        
+        # Compare underlying user IDs
+        if ($login->user->id == $player->login->user->id) {
+            return $login;
+        }
+    }
+    
+    return;
+}
+
+# Execute house player action based on strategy decision
+sub _execute_house_player_action {
+    my ($self, $login, $table, $decision) = @_;
+    
+    my $action = $decision->{action};
+    my $table_id = $table->table_id;
+    
+    # Build options for action
+    my $opts = {
+        table_id => $table_id,
+    };
+    
+    # Execute action through existing command handlers
+    # This ensures all validation and game logic is applied
+    if ($action eq 'bet' || $action eq 'raise') {
+        $opts->{chips} = $decision->{amount};
+        $self->bet($login, $opts);
+    }
+    elsif ($action eq 'call') {
+        $opts->{chips} = $decision->{amount};
+        $self->bet($login, $opts);
+    }
+    elsif ($action eq 'check') {
+        $self->check($login, $opts);
+    }
+    elsif ($action eq 'fold') {
+        $self->fold($login, $opts);
+    }
+    elsif ($action eq 'draw' || $action eq 'discard') {
+        $opts->{card_idx} = $decision->{cards} || [];
+        if ($action eq 'draw') {
+            $self->draw($login, $opts);
+        } else {
+            $self->discard($login, $opts);
+        }
+    }
+    else {
+        # Default to check if possible, otherwise fold
+        if ($table->legal_action('check')) {
+            $self->check($login, $opts);
+        } else {
+            $self->fold($login, $opts);
+        }
+    }
 }
 
 1;

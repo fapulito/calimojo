@@ -30,8 +30,9 @@ jobs:
       
       - name: Install dependencies
         run: |
-          cpanm --notest DBD::SQLite DBD::Pg DBI SQL::Abstract Moo Digest::SHA
-          cpanm --notest Test::More Test::Exception Test::MockModule Test::Output
+          cd mojopoker-1.1.1
+          cpanm --installdeps --notest .
+          cpanm --notest Algorithm::Combinatorics Mojo::IOLoop Mojolicious Tie::IxHash SQL::Abstract Crypt::Eksblowfish
       
       - name: Setup PostgreSQL schema
         env:
