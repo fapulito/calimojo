@@ -42,8 +42,11 @@ jobs:
       
       - name: Run tests
         env:
-          DATABASE_URL: postgresql://postgres:testpassword@localhost:5432/mojopoker_test
+          DATABASE_URL: postgresql://postgres:testpassword@localhost:5432/mojopoker_test?sslmode=disable
           RUN_INTEGRATION_TESTS: 1
+          PGUSER: postgres
+          PGPASSWORD: testpassword
+          PGSSLMODE: disable
         run: |
           cd mojopoker-1.1.1
           prove -v t/
