@@ -20,27 +20,20 @@ has 'dbh' => (
 );
 
 sub _build_dbh {
-    # Support both SQLite (local dev) and PostgreSQL (NeonDB production)
-    my $db_host = $ENV{DB_HOST};
+    # NeonDB PostgreSQL connection - requires env vars
+    my $db_host = $ENV{DB_HOST} or die "DB_HOST environment variable required";
+    my $db_user = $ENV{DB_USER} or die "DB_USER environment variable required";
+    my $db_pass = $ENV{DB_PASSWORD} or die "DB_PASSWORD environment variable required";
+    my $db_port = $ENV{DB_PORT} || 5432;
+    my $db_name = $ENV{DB_NAME} || 'neondb';
+    my $sslmode = $ENV{DB_SSLMODE} || 'require';
     
-    if ($db_host) {
-        # PostgreSQL/NeonDB connection
-        my $db_port = $ENV{DB_PORT} || 5432;
-        my $db_name = $ENV{DB_NAME} || 'neondb';
-        my $db_user = $ENV{DB_USER} || '';
-        my $db_pass = $ENV{DB_PASSWORD} || '';
-        my $sslmode = $ENV{DB_SSLMODE} || 'require';
-        
-        return DBI->connect(
-            "dbi:Pg:dbname=$db_name;host=$db_host;port=$db_port;sslmode=$sslmode",
-            $db_user,
-            $db_pass,
-            { RaiseError => 1, AutoCommit => 1, pg_enable_utf8 => 1 }
-        );
-    } else {
-        # SQLite fallback for local development
-        return DBI->connect( "dbi:SQLite:dbname=./db/fb.db", "", "" );
-    }
+    return DBI->connect(
+        "dbi:Pg:dbname=$db_name;host=$db_host;port=$db_port;sslmode=$sslmode",
+        $db_user,
+        $db_pass,
+        { RaiseError => 1, AutoCommit => 1, pg_enable_utf8 => 1 }
+    );
 }
 
 has 'sql' => (
@@ -56,7 +49,7 @@ sub _build_sql {
 
 sub new_user {
    my ($self, $opts) = @_;
-   my ( $stmt, @bind ) = $self->sql->insert( 'user', $opts );
+   my ( $stmt, @bind ) = $self->sql->insert( 'users', $opts );
    my $sth = $self->dbh->prepare($stmt);
    $sth->execute(@bind);
 
@@ -72,7 +65,7 @@ sub new_user {
 
 sub fetch_user {
     my ( $self, $opts ) = @_;
-    my ( $stmt, @bind ) = $self->sql->select( 'user', '*', $opts );
+    my ( $stmt, @bind ) = $self->sql->select( 'users', '*', $opts );
     my $sth = $self->dbh->prepare($stmt);
     $sth->execute(@bind);
     my $href = $sth->fetchrow_hashref;
@@ -86,7 +79,7 @@ sub update_user {
     my ( $self, $opts, $id ) = @_;
     $opts->{last_visit} = time;
     my ( $stmt, @bind ) =
-      $self->sql->update( 'user', $opts, { id => $id } );
+      $self->sql->update( 'users', $opts, { id => $id } );
     my $sth = $self->dbh->prepare($stmt);
     $sth->execute(@bind);
     return $self->dbh->err ? undef : 1;  
@@ -95,8 +88,8 @@ sub update_user {
 sub fetch_leaders {
     my $self = shift;
     my $sql  = <<SQL;
-SELECT username, ROUND((chips - invested)*1.00 / invested, 2) * 100 AS profit, chips
-FROM user
+SELECT username, ROUND((chips - invested)*1.00 / NULLIF(invested, 0), 2) * 100 AS profit, chips
+FROM users
 WHERE id != 1 
 ORDER BY profit DESC
 LIMIT 20
@@ -109,7 +102,7 @@ sub reset_leaders {
     my $self = shift;
 
     my $sql = <<SQL;
-UPDATE user 
+UPDATE users 
 SET chips = 400, invested = 400 
 SQL
     return $self->dbh->do($sql);
@@ -119,7 +112,7 @@ SQL
 sub debit_chips {
     my ( $self, $user_id, $chips ) = @_;
     my $sql = <<SQL;
-UPDATE user 
+UPDATE users 
 SET chips = chips - $chips 
 WHERE id = $user_id
 SQL
@@ -129,7 +122,7 @@ SQL
 sub credit_chips {
     my ( $self, $user_id, $chips ) = @_;
     my $sql = <<SQL;
-UPDATE user 
+UPDATE users 
 SET chips = chips + $chips 
 WHERE id = $user_id 
 SQL
@@ -140,20 +133,21 @@ sub fetch_chips {
     my ( $self, $user_id ) = @_;
     my $sql = <<SQL;
 SELECT chips 
-FROM user 
+FROM users 
 WHERE id = ?
 SQL
 
   my $sth = $self->dbh->prepare($sql);
   $sth->execute( $user_id );
   my $chips = $sth->fetchrow_array || 0;
+  warn "DEBUG fetch_chips: user_id=$user_id chips=$chips driver=" . $self->dbh->{Driver}{Name};
   return $chips;
 }
 
 sub credit_invested {
     my ( $self, $user_id, $chips ) = @_;
     my $sql = <<SQL;
-UPDATE user 
+UPDATE users 
 SET invested = invested + $chips
 WHERE id = $user_id 
 SQL

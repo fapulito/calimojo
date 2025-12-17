@@ -18,6 +18,9 @@ CREATE TABLE IF NOT EXISTS users (
     chips INTEGER DEFAULT 400,
     invested INTEGER DEFAULT 400,
     level INTEGER DEFAULT 0,
+    bookmark VARCHAR(40),
+    facebook_deleted TIMESTAMP,
+    remote_address VARCHAR(50),
     last_visit TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

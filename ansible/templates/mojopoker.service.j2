@@ -3,11 +3,12 @@ Description=Mojo Poker Server
 After=network.target
 
 [Service]
-Type=simple
+Type=forking
 User={{ app_user }}
-WorkingDirectory={{ app_dir }}/mojopoker-1.1.1
+WorkingDirectory={{ app_dir }}/mojopoker-{{ app_version }}
 EnvironmentFile={{ app_dir }}/.env
-ExecStart=/usr/bin/perl script/mojopoker.pl
+ExecStart={{ app_dir }}/mojopoker-{{ app_version }}/script/mojopoker.pl
+PIDFile={{ app_dir }}/mojopoker-{{ app_version }}/mojopoker.pid
 Restart=always
 RestartSec=5
 

@@ -21,6 +21,7 @@ facebook_app_id: ""
 facebook_app_secret: ""
 
 # Application settings
-app_port: 8080
+app_port: 3000
 app_user: www-data
 app_dir: /var/www/mojopoker
+app_version: "1.1.1"

@@ -74,6 +74,11 @@
       loop:
         - Moo
         - Crypt::Eksblowfish::Bcrypt
+        - Algorithm::Combinatorics
+        - EV
+        - Tie::IxHash
+        - List::MoreUtils
+        - Storable
 
     # ==========================================
     # Nginx and Certbot
@@ -146,7 +151,7 @@
 
     - name: Ensure lib/FB directory structure exists
       file:
-        path: "{{ app_dir }}/mojopoker-1.1.1/lib/FB"
+        path: "{{ app_dir }}/mojopoker-{{ app_version }}/lib/FB"
         state: directory
         owner: "{{ app_user }}"
         group: "{{ app_user }}"

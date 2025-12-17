@@ -4,6 +4,23 @@ use strict;
 use warnings;
 use feature qw(say);
 use lib './lib';
+
+# Load .env file if it exists
+if (-f '.env' && open my $fh, '<', '.env') {
+    while (<$fh>) {
+        chomp;
+        next if /^\s*#/ || /^\s*$/;  # Skip comments and empty lines
+        if (/^([^=]+)=(.*)$/) {
+            my ($key, $value) = ($1, $2);
+            $value =~ s/^["']|["']$//g;  # Remove quotes
+            $ENV{$key} = $value unless exists $ENV{$key};
+        }
+    }
+    close $fh;
+} elsif (-f '.env') {
+    warn "Could not open .env: $!";
+}
+
 use Ships;
 use EV;
 use Mojo::Server::Daemon;
