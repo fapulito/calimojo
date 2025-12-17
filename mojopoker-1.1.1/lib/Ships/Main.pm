@@ -101,13 +101,9 @@ sub deletion {
    
     return unless $id;
 
-    my $sql  = <<SQL;
-SELECT facebook_deleted 
-FROM users
-WHERE bookmark = '$id'
-SQL
-
-    my $deleted = $self->app->fb->db->dbh->selectrow_array($sql);
+    my $sth = $self->app->fb->db->dbh->prepare("SELECT facebook_deleted FROM users WHERE bookmark = ?");
+    $sth->execute($id);
+    my $deleted = $sth->fetchrow_array;
 
     return unless $deleted;
 
