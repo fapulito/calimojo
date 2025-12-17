@@ -18,6 +18,10 @@ use FB::Login;
 use FB::Login::WebSocket;
 use FB::Login::WebSocket::Mock;
 use FB::User;
+use FB::Poker::Strategy::Manager;
+use FB::Poker::Strategy::Evaluator::Holdem;
+use FB::Poker::Strategy::Evaluator::Omaha;
+use FB::Poker::Strategy::Evaluator::Draw;
 use Time::Piece;
 use Time::Seconds;
 use MIME::Base64;
@@ -98,6 +102,26 @@ has 'db' => (
 sub _build_db {
     my $self = shift;
     return FB::Db->new;
+}
+
+has 'strategy_manager' => (
+    is      => 'rw',
+    isa     => sub { die "Not a FB::Poker::Strategy::Manager" unless $_[0]->isa('FB::Poker::Strategy::Manager') },
+    builder => '_build_strategy_manager',
+);
+
+sub _build_strategy_manager {
+    my $self = shift;
+    my $manager = FB::Poker::Strategy::Manager->new;
+    
+    # Register evaluators for different game variants
+    # Requirement 2.4: Load appropriate evaluation rules for each variant
+    $manager->register_evaluator('holdem', FB::Poker::Strategy::Evaluator::Holdem->new);
+    $manager->register_evaluator('omaha', FB::Poker::Strategy::Evaluator::Omaha->new);
+    $manager->register_evaluator('omahahilo', FB::Poker::Strategy::Evaluator::Omaha->new);
+    $manager->register_evaluator('draw', FB::Poker::Strategy::Evaluator::Draw->new);
+    
+    return $manager;
 }
 
 has 'login_list' => (
@@ -1046,6 +1070,7 @@ sub _create_test_tables {
         big_blind => 2,
         auto_start => 1,
         db => $self->db,
+        fb => $self,
     };
 
     my $table = $self->table_maker->ring_table($table_opts);
@@ -1071,6 +1096,7 @@ sub _create_test_tables {
         big_blind => 2,
         auto_start => 1,
         db => $self->db,
+        fb => $self,
     };
 
     $table = $self->table_maker->ring_table($table_opts);

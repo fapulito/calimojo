@@ -14,6 +14,8 @@ with 'FB::Poker::Draw';
 
 has 'db' => ( is => 'rw', );
 
+has 'fb' => ( is => 'rw', );
+
 has 'auto_play_event' => ( is => 'rw', );
 
 has 'new_game_delay' => (
@@ -450,6 +452,11 @@ sub action_done {
   elsif ( $self->chairs->[ $self->action ]->chips == 0 && !$discard_round ) {
     $self->action_done;
   }
+  
+  # Requirement 4.1: Trigger house player auto-play when it's their turn
+  elsif ( $self->_is_house_player( $self->action ) ) {
+    $self->_house_player_action;
+  }
 }
 
 sub auto_play {
@@ -722,6 +729,10 @@ sub end_game {
     $self->new_game_delay( $self->_build_new_game_delay );
   }
   $self->payout;
+  
+  # Requirement 4.4: Automatic rebuy for house players
+  $self->_house_player_rebuy;
+  
   $self->pot(0);
   $self->clear_round;
   $self->clear_next_round;
@@ -915,6 +926,133 @@ sub BUILD {
       || FB::Poker::Card->new( rank => '', suit => $card );
     $val->wild_flag(1);
     $self->dealer->master_deck->cards->Push( $card => $val );
+  }
+}
+
+# Requirement 9.1: Detect house players by username pattern
+sub _is_house_player {
+  my ( $self, $chair_idx ) = @_;
+  return 0 unless defined $chair_idx;
+  
+  my $chair = $self->chairs->[$chair_idx];
+  return 0 unless $chair && $chair->has_player;
+  
+  my $player = $chair->player;
+  return 0 unless $player && $player->has_login;
+  
+  my $login = $player->login;
+  return 0 unless $login && $login->has_user;
+  
+  my $username = $login->user->username;
+  return 0 unless $username;
+  
+  # Check if username matches HousePlayer pattern
+  return $username =~ /^HousePlayer\d+$/;
+}
+
+# Requirement 4.1, 4.2: Execute house player action using Strategy Manager
+sub _house_player_action {
+  my $self = shift;
+  return unless defined $self->action && $self->fb;
+  
+  my $chair = $self->chairs->[ $self->action ];
+  return unless $chair && $chair->has_player;
+  
+  # Get strategy manager from FB instance
+  my $strategy_manager = $self->fb->strategy_manager;
+  return unless $strategy_manager;
+  
+  # Get decision from strategy manager
+  my $decision = $strategy_manager->decide_action( $self, $chair );
+  return unless $decision && ref $decision eq 'HASH';
+  
+  # Execute the action through existing table methods
+  my $action = $decision->{action};
+  
+  if ( $action eq 'fold' ) {
+    $self->fold;
+    $self->action_done;
+  }
+  elsif ( $action eq 'check' && $self->legal_action('check') ) {
+    $self->check;
+    $self->action_done;
+  }
+  elsif ( $action eq 'bet' || $action eq 'call' || $action eq 'raise' ) {
+    my $amount = $decision->{amount} || 0;
+    if ( $amount > 0 ) {
+      my $bet = $self->bet($amount);
+      $self->action_done if $bet;
+    }
+    else {
+      # If no valid bet amount, check or fold
+      if ( $self->legal_action('check') ) {
+        $self->check;
+      }
+      else {
+        $self->fold;
+      }
+      $self->action_done;
+    }
+  }
+  elsif ( $action eq 'draw' && $decision->{cards} ) {
+    # Handle draw poker actions
+    # This would need integration with draw poker logic
+    # For now, just pass
+    $self->action_done;
+  }
+  else {
+    # Default: check if possible, otherwise fold
+    if ( $self->legal_action('check') ) {
+      $self->check;
+    }
+    else {
+      $self->fold;
+    }
+    $self->action_done;
+  }
+}
+
+# Requirement 4.4: Automatic rebuy for house players when below table minimum
+sub _house_player_rebuy {
+  my $self = shift;
+  return unless $self->can('table_min') && $self->table_min;
+  return unless $self->db;
+  
+  for my $chair ( @{ $self->chairs } ) {
+    next unless $chair->has_player;
+    next unless $self->_is_house_player( $chair->index );
+    
+    my $player = $chair->player;
+    my $current_chips = $player->chips;
+    
+    # Check if below table minimum
+    if ( $current_chips < $self->table_min ) {
+      my $user_id = $player->login->user->id;
+      
+      # Calculate rebuy amount (midpoint between min and max)
+      my $target_chips = $self->can('table_max') && $self->table_max 
+        ? ( $self->table_min + $self->table_max ) / 2
+        : $self->table_min * 2;  # Default to 2x minimum if no max
+      
+      my $rebuy_amount = $target_chips - $current_chips;
+      
+      # Get available chips from user account
+      my $available = $self->db->fetch_chips($user_id);
+      
+      # Only rebuy if user has chips available
+      if ( $available >= $rebuy_amount ) {
+        # Debit from user account
+        $self->db->debit_chips( $user_id, $rebuy_amount );
+        
+        # Credit to player at table
+        $player->chips( $current_chips + $rebuy_amount );
+      }
+      elsif ( $available > 0 ) {
+        # Rebuy with whatever is available
+        $self->db->debit_chips( $user_id, $available );
+        $player->chips( $current_chips + $available );
+      }
+    }
   }
 }
 

@@ -1261,4 +1261,96 @@ sub _table_opts {
     return $response;
 }
 
+# Check if current player is a house player and trigger strategy
+# Requirements: 4.1, 4.2 - House player actions integrate with game engine
+sub check_house_player_action {
+    my ($self, $table) = @_;
+    
+    return unless defined $table;
+    return unless defined $table->action;
+    return if $table->game_over;
+    
+    my $chair = $table->chairs->[$table->action];
+    return unless $chair && $chair->has_player;
+    
+    my $player = $chair->player;
+    return unless $player;
+    
+    # Check if this is a house player by username pattern
+    my $username = $player->username || '';
+    return unless $username =~ /^HousePlayer\d+$/;
+    
+    # Get the login for this player
+    my $login = $self->_find_login_for_player($player);
+    return unless $login;
+    
+    # Use strategy manager to decide action
+    my $decision = $self->strategy_manager->decide_action($table, $chair);
+    
+    # Execute the decided action through existing validation
+    # Requirement 4.2: Actions go through existing validation logic
+    $self->_execute_house_player_action($login, $table, $decision);
+}
+
+# Find login object for a player
+sub _find_login_for_player {
+    my ($self, $player) = @_;
+    
+    # Search through login_list for matching user
+    for my $login_id (keys %{$self->login_list}) {
+        my $login = $self->login_list->{$login_id};
+        if ($login->user && $login->user->id == $player->id) {
+            return $login;
+        }
+    }
+    
+    return;
+}
+
+# Execute house player action based on strategy decision
+sub _execute_house_player_action {
+    my ($self, $login, $table, $decision) = @_;
+    
+    my $action = $decision->{action};
+    my $table_id = $table->table_id;
+    
+    # Build options for action
+    my $opts = {
+        table_id => $table_id,
+    };
+    
+    # Execute action through existing command handlers
+    # This ensures all validation and game logic is applied
+    if ($action eq 'bet' || $action eq 'raise') {
+        $opts->{chips} = $decision->{amount};
+        $self->bet($login, $opts);
+    }
+    elsif ($action eq 'call') {
+        $opts->{chips} = $decision->{amount};
+        $self->bet($login, $opts);
+    }
+    elsif ($action eq 'check') {
+        $self->check($login, $opts);
+    }
+    elsif ($action eq 'fold') {
+        $self->fold($login, $opts);
+    }
+    elsif ($action eq 'draw' || $action eq 'discard') {
+        $opts->{cards} = $decision->{cards} || [];
+        if ($action eq 'draw') {
+            $self->draw($login, $opts);
+        } else {
+            $self->discard($login, $opts);
+        }
+    }
+    else {
+        # Default to check if possible, otherwise fold
+        if ($table->legal_action('check')) {
+            $self->check($login, $opts);
+        } else {
+            $self->fold($login, $opts);
+        }
+    }
+}
+
 1;

@@ -260,6 +260,17 @@ sub _timesup_action {
   }
 }
 
+# Hook to check for house player actions after new action begins
+# Requirements: 4.1, 4.2 - Integrate strategy with game engine
+after 'begin_new_action' => sub {
+  my $self = shift;
+  
+  # Check if we have FB instance and trigger house player action if needed
+  if ($self->fb) {
+    $self->fb->check_house_player_action($self);
+  }
+};
+
 sub wait {
   my ( $self, $login ) = @_;
   $self->_wait($login);
