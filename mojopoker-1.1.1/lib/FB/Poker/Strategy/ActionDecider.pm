@@ -20,10 +20,21 @@ has 'rng' => (
 
 sub _build_rng {
     my ($self) = @_;
-    # Initialize RNG with seed for reproducibility
+    # Initialize per-instance RNG with seed for reproducibility
     # Requirement 3.4: Independent RNG per house player
-    srand($self->rng_seed);
-    return sub { rand() };
+    # Uses Linear Congruential Generator (LCG) with its own state
+    # Parameters from Numerical Recipes: a=1664525, c=1013904223, m=2^32
+    
+    my $state = $self->rng_seed;
+    
+    return sub {
+        # LCG formula: state = (a * state + c) mod m
+        # Using 32-bit arithmetic (m = 2^32 is implicit via integer overflow)
+        $state = (1664525 * $state + 1013904223) & 0xFFFFFFFF;
+        
+        # Convert to [0, 1) range
+        return $state / 0xFFFFFFFF;
+    };
 }
 
 # Main decision method
