@@ -149,10 +149,12 @@ sub _evaluate_low_hand {
     @unique_ranks = @unique_ranks[0..4];
     
     # Calculate low score (lower is better)
-    # Score is based on the ranks: A-2-3-4-5 = 12345 (best)
+    # Score is built in descending rank order (highest rank first)
+    # A-2-3-4-5 (5-4-3-2-A) = 54321 (best)
     # 8-7-6-5-4 = 87654 (worst qualifying)
+    # Build score from highest rank to lowest (descending order)
     my $score = 0;
-    for my $i (0..4) {
+    for my $i (reverse 0..4) {
         $score = $score * 10 + $unique_ranks[$i];
     }
     
@@ -164,9 +166,9 @@ sub _normalize_low_score {
     
     return 0.0 unless defined $score;
     
-    # Best low: A-2-3-4-5 = 12345
+    # Best low: A-2-3-4-5 (5-4-3-2-A) = 54321
     # Worst low: 8-7-6-5-4 = 87654
-    my $best = 12345;
+    my $best = 54321;
     my $worst = 87654;
     
     # Invert: lower score = higher strength
