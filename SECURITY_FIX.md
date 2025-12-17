@@ -64,12 +64,36 @@ The fix has been verified to:
 3. Safely reject malicious input without executing injected SQL
 4. Work correctly with both SQLite and PostgreSQL databases
 
+## Additional Fix: Timestamp Override Bug
+
+**Issue:** The `new_user` method had a logic error where user-provided timestamps were being unconditionally overwritten.
+
+**Location:** `mojopoker-1.1.1/lib/FB/Db.pm` lines 403-404 and 433-434
+
+**Problem:**
+1. Lines 403-404 used incorrect logic: `if exists $opts->{reg_date} || !defined $opts->{reg_date}` which always evaluated to true when the key existed
+2. Lines 433-434 unconditionally overwrote timestamps: `$opts->{reg_date} = $current_time;`
+
+**Fix Applied:**
+1. Changed default assignment to use defined-or operator (`//=`):
+   ```perl
+   $opts->{reg_date} //= $current_time;
+   $opts->{last_visit} //= $current_time;
+   ```
+2. Removed the unconditional overwrite lines that were resetting timestamps after database insertion
+3. Added comments to clarify that timestamps are already set and formatted
+
+**Benefits:**
+- User-provided timestamps are now preserved correctly
+- Default timestamps are only set when not provided
+- Maintains backward compatibility for code that doesn't provide timestamps
+
 ## Recommendation
 Review all other database methods to ensure they use parameterized queries. A quick audit shows:
-- ✓ `new_user` - Already uses parameterized queries
+- ✓ `new_user` - Already uses parameterized queries + **FIXED** timestamp override bug
 - ✓ `fetch_user` - Already uses parameterized queries
 - ✓ `update_user` - Already uses parameterized queries
 - ✓ `fetch_chips` - Already uses parameterized queries
-- ✓ `credit_invested` - **FIXED** in this commit
+- ✓ `credit_invested` - **FIXED** SQL injection vulnerability
 
-All database operations now use secure parameterized queries.
+All database operations now use secure parameterized queries and respect user-provided values.

@@ -401,10 +401,14 @@ sub new_user {
    my $table_name = $self->_get_table_name('users');
    
    # Format timestamp for database insertion
-   # Store current time for both reg_date and last_visit
+   # Set defaults for reg_date and last_visit if not provided, then format all timestamps
    my $current_time = time;
-   $opts->{reg_date} = $self->_format_timestamp($current_time) if exists $opts->{reg_date} || !defined $opts->{reg_date};
-   $opts->{last_visit} = $self->_format_timestamp($current_time) if exists $opts->{last_visit} || !defined $opts->{last_visit};
+   $opts->{reg_date} //= $current_time;
+   $opts->{last_visit} //= $current_time;
+   
+   # Format timestamps for the database (preserves user-provided values)
+   $opts->{reg_date} = $self->_format_timestamp($opts->{reg_date});
+   $opts->{last_visit} = $self->_format_timestamp($opts->{last_visit});
    
    my ( $stmt, @bind ) = $self->sql->insert( $table_name, $opts );
    
@@ -429,9 +433,8 @@ sub new_user {
        return;
    }
    
-   # Set user object attributes with Unix timestamp for consistency
-   $opts->{reg_date} = $current_time;
-   $opts->{last_visit} = $current_time;
+   # Set user object attributes
+   # Note: reg_date and last_visit are already set and formatted above
    $opts->{level}    = 2;
    $opts->{handle}   = $opts->{username} if $opts->{username};
    $opts->{bookmark} = hmac_sha1_hex( $opts->{id}, $self->secret );
