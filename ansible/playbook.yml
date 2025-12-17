@@ -74,6 +74,11 @@
       loop:
         - Moo
         - Crypt::Eksblowfish::Bcrypt
+        - Algorithm::Combinatorics
+        - EV
+        - Tie::IxHash
+        - List::MoreUtils
+        - Storable
 
     # ==========================================
     # Nginx and Certbot
