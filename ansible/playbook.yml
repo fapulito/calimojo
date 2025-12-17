@@ -102,6 +102,7 @@
       stat:
         path: "{{ app_dir }}"
       register: app_dir_stat
+      tags: [deploy]
 
     - name: Create timestamped backup of existing app directory
       archive:
@@ -109,6 +110,7 @@
         dest: "{{ app_dir }}-backup-{{ ansible_date_time.iso8601_basic_short }}.tar.gz"
         format: gz
       when: app_dir_stat.stat.exists and app_dir_stat.stat.isdir
+      tags: [deploy]
 
     - name: Create application directory
       file:
@@ -117,6 +119,7 @@
         owner: "{{ app_user }}"
         group: "{{ app_user }}"
         mode: '0755'
+      tags: [deploy]
 
     - name: Clone or update repository
       git:
@@ -125,6 +128,8 @@
         version: "{{ repo_branch }}"
         update: yes
       become_user: "{{ app_user }}"
+      tags: [deploy]
+      notify: Restart mojopoker
 
     - name: Set ownership of app directory
       file:
@@ -132,6 +137,7 @@
         owner: "{{ app_user }}"
         group: "{{ app_user }}"
         recurse: yes
+      tags: [deploy]
 
 
     # ==========================================
@@ -144,6 +150,8 @@
         owner: "{{ app_user }}"
         group: "{{ app_user }}"
         mode: '0600'
+      tags: [deploy]
+      notify: Restart mojopoker
 
     # ==========================================
     # Systemd Service
@@ -154,6 +162,7 @@
         dest: /etc/systemd/system/mojopoker.service
         mode: '0644'
       notify: Reload systemd
+      tags: [deploy]
 
     - name: Enable and start mojopoker service
       systemd:
@@ -161,6 +170,7 @@
         state: started
         enabled: yes
         daemon_reload: yes
+      tags: [deploy]
 
     # ==========================================
     # Nginx Configuration
