@@ -68,6 +68,197 @@ Visit http://localhost:3001
 
 > **Port Conflict Note:** Both the Perl backend and Node frontend default to port 3000. For local development, run them on different ports. In production, they run on separate servers (DigitalOcean for Perl, Vercel for Node).
 
+## Database Setup
+
+Mojo Poker supports both SQLite (for local development) and PostgreSQL (for production). The system automatically detects which database to use based on the `DATABASE_TYPE` environment variable.
+
+### SQLite Setup (Default)
+
+SQLite is the default database and requires no additional configuration. It's perfect for local development and testing.
+
+**1. Set environment variables (optional):**
+
+```bash
+# .env file
+DATABASE_TYPE=sqlite          # or leave unset (defaults to sqlite)
+SQLITE_PATH=./db              # Path to database files (default: ./db)
+```
+
+**2. Initialize the databases:**
+
+```bash
+cd mojopoker-1.1.1/db
+sqlite3 fb.db < fb.schema
+sqlite3 poker.db < poker.schema
+```
+
+**3. Verify the setup:**
+
+```bash
+# Check that databases were created
+ls -lh fb.db poker.db
+
+# Test a query
+sqlite3 fb.db "SELECT COUNT(*) FROM user;"
+```
+
+**SQLite Features:**
+- ✅ Zero configuration required
+- ✅ File-based (no server needed)
+- ✅ Perfect for development and testing
+- ✅ Automatic WAL mode for better concurrency
+- ✅ Foreign key constraints enabled
+
+### PostgreSQL Setup (Production)
+
+PostgreSQL is recommended for production deployments. It supports concurrent users, connection pooling, and scales better than SQLite.
+
+**1. Choose a PostgreSQL provider:**
+
+- **NeonDB** (recommended) - Serverless PostgreSQL with generous free tier
+- **Heroku Postgres** - Easy setup with Heroku deployments
+- **AWS RDS** - Enterprise-grade managed PostgreSQL
+- **DigitalOcean Managed Database** - Simple and affordable
+- **Local PostgreSQL** - For development/testing
+
+**2. Set environment variables:**
+
+**Option A: Using DATABASE_URL (recommended)**
+
+```bash
+# .env file
+DATABASE_TYPE=postgres
+DATABASE_URL=postgresql://username:password@host:port/database?sslmode=require
+
+# Example for NeonDB:
+DATABASE_URL=postgresql://user:pass@ep-example-123.us-east-2.aws.neon.tech:5432/neondb?sslmode=require
+```
+
+**Option B: Using individual variables**
+
+```bash
+# .env file
+DATABASE_TYPE=postgres
+DB_HOST=ep-example-123.us-east-2.aws.neon.tech
+DB_USER=your_username
+DB_PASSWORD=your_password
+DB_PORT=5432
+DB_NAME=neondb
+DB_SSLMODE=require
+```
+
+**3. Initialize the database schema:**
+
+```bash
+cd mojopoker-1.1.1/db
+
+# Using psql command-line tool
+psql $DATABASE_URL -f postgres.schema
+
+# Or using individual connection parameters
+psql -h $DB_HOST -U $DB_USER -d $DB_NAME -f postgres.schema
+```
+
+**4. Verify the setup:**
+
+```bash
+# Test connection
+psql $DATABASE_URL -c "SELECT version();"
+
+# Check tables
+psql $DATABASE_URL -c "\dt"
+```
+
+**PostgreSQL Features:**
+- ✅ Production-ready with high concurrency
+- ✅ Connection pooling support
+- ✅ Advanced indexing and query optimization
+- ✅ ACID compliance with transactions
+- ✅ SSL/TLS encryption
+
+### Database Migration
+
+See [DATABASE_MIGRATION.md](DATABASE_MIGRATION.md) for detailed instructions on migrating between SQLite and PostgreSQL.
+
+**Quick migration from SQLite to PostgreSQL:**
+
+```bash
+# Export SQLite data
+cd mojopoker-1.1.1/db
+sqlite3 fb.db .dump > fb_dump.sql
+
+# Import to PostgreSQL (requires manual schema adjustments)
+# See DATABASE_MIGRATION.md for complete instructions
+```
+
+### Troubleshooting
+
+**SQLite Issues:**
+
+```bash
+# Problem: "unable to open database file"
+# Solution: Check file permissions and path
+ls -la db/fb.db
+chmod 644 db/fb.db
+
+# Problem: "database is locked"
+# Solution: Close other connections or enable WAL mode
+sqlite3 fb.db "PRAGMA journal_mode=WAL;"
+
+# Problem: "no such table: user"
+# Solution: Initialize the schema
+sqlite3 fb.db < db/fb.schema
+```
+
+**PostgreSQL Issues:**
+
+```bash
+# Problem: "connection refused"
+# Solution: Check host, port, and firewall settings
+ping $DB_HOST
+telnet $DB_HOST $DB_PORT
+
+# Problem: "password authentication failed"
+# Solution: Verify credentials in .env file
+echo $DATABASE_URL
+
+# Problem: "SSL connection required"
+# Solution: Add sslmode=require to connection string
+DATABASE_URL=postgresql://user:pass@host:5432/db?sslmode=require
+
+# Problem: "relation 'users' does not exist"
+# Solution: Run the PostgreSQL schema
+psql $DATABASE_URL -f db/postgres.schema
+```
+
+**Environment Variable Issues:**
+
+```bash
+# Problem: "Unsupported DATABASE_TYPE"
+# Solution: Use 'sqlite', 'postgres', or 'postgresql'
+DATABASE_TYPE=postgres  # not 'pg' or 'psql'
+
+# Problem: Variables not loading
+# Solution: Check .env file location and syntax
+cat .env | grep DATABASE_TYPE
+
+# Problem: Missing required PostgreSQL variables
+# Solution: Set either DATABASE_URL or all DB_* variables
+# See .env.example for complete list
+```
+
+**Testing Database Connection:**
+
+```bash
+# Test with Perl script
+cd mojopoker-1.1.1
+perl -Ilib -MFB::Db -e 'my $db = FB::Db->new; print "Connected to: " . $db->db_type . "\n";'
+
+# Run database tests
+prove -v t/sqlite_connection.t
+prove -v t/postgres_connection.t
+```
+
 ## Production Deployment
 
 See [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) for complete instructions covering:
