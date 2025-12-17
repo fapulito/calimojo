@@ -70,23 +70,17 @@ sub delete {
 
     if ($encoded_sig eq $expected_sig && exists $data->{user_id}) {
       #verified; okay to do something with $data
-       my $read  = <<SQL;
-SELECT id, bookmark
-FROM users
-WHERE facebook_id = $data->{user_id}
-SQL
-       my ($id, $bookmark) = $self->app->fb->db->dbh->selectrow_array($read);
+       my $sth = $self->app->fb->db->dbh->prepare("SELECT id, bookmark FROM users WHERE facebook_id = ?");
+       $sth->execute($data->{user_id});
+       my ($id, $bookmark) = $sth->fetchrow_array;
 
        unless ($id && $bookmark) {
           $self->render(json => $return);
           return;
        }
 
-       my $delete = <<SQL;
-UPDATE users SET facebook_id = NULL, facebook_deleted = CURRENT_TIMESTAMP
-WHERE id = $id
-SQL
-       $self->app->fb->db->dbh->do($delete);
+       my $del_sth = $self->app->fb->db->dbh->prepare("UPDATE users SET facebook_id = NULL, facebook_deleted = CURRENT_TIMESTAMP WHERE id = ?");
+       $del_sth->execute($id);
        $status_url .= $bookmark;
        $return->{url} = $status_url;
        $return->{confirmation_code} = $bookmark;
