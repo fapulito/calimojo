@@ -11,6 +11,7 @@ use lib "$FindBin::Bin/../lib";
 use_ok('FB::Poker::Strategy::Manager');
 use_ok('FB::Poker::Strategy::Evaluator::Holdem');
 use_ok('FB::Poker::Strategy::Evaluator::Omaha');
+use_ok('FB::Poker::Strategy::Evaluator::OmahaHiLo');
 use_ok('FB::Poker::Strategy::Evaluator::Draw');
 use_ok('FB::Poker::Strategy::Config');
 use_ok('FB::Poker::Card');
@@ -30,12 +31,18 @@ ok($manager->register_evaluator('omaha', $omaha_eval), 'Registered omaha evaluat
 my $draw_eval = FB::Poker::Strategy::Evaluator::Draw->new;
 ok($manager->register_evaluator('draw', $draw_eval), 'Registered draw evaluator');
 
+my $omahahilo_eval = FB::Poker::Strategy::Evaluator::OmahaHiLo->new;
+ok($manager->register_evaluator('omahahilo', $omahahilo_eval), 'Registered omahahilo evaluator');
+
 # Test 3: Evaluator retrieval
 my $retrieved = $manager->get_evaluator('holdem');
 is($retrieved, $holdem_eval, 'Retrieved correct evaluator for holdem');
 
 $retrieved = $manager->get_evaluator('omaha');
 is($retrieved, $omaha_eval, 'Retrieved correct evaluator for omaha');
+
+$retrieved = $manager->get_evaluator('omahahilo');
+is($retrieved, $omahahilo_eval, 'Retrieved correct evaluator for omahahilo');
 
 $retrieved = $manager->get_evaluator('nonexistent');
 is($retrieved, undef, 'Returns undef for unregistered game class');

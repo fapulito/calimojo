@@ -21,6 +21,7 @@ use FB::User;
 use FB::Poker::Strategy::Manager;
 use FB::Poker::Strategy::Evaluator::Holdem;
 use FB::Poker::Strategy::Evaluator::Omaha;
+use FB::Poker::Strategy::Evaluator::OmahaHiLo;
 use FB::Poker::Strategy::Evaluator::Draw;
 use FB::Session::Manager;
 use Time::Piece;
@@ -119,7 +120,7 @@ sub _build_strategy_manager {
     # Requirement 2.4: Load appropriate evaluation rules for each variant
     $manager->register_evaluator('holdem', FB::Poker::Strategy::Evaluator::Holdem->new);
     $manager->register_evaluator('omaha', FB::Poker::Strategy::Evaluator::Omaha->new);
-    $manager->register_evaluator('omahahilo', FB::Poker::Strategy::Evaluator::Omaha->new);
+    $manager->register_evaluator('omahahilo', FB::Poker::Strategy::Evaluator::OmahaHiLo->new);
     $manager->register_evaluator('draw', FB::Poker::Strategy::Evaluator::Draw->new);
     
     return $manager;
