@@ -2,6 +2,7 @@ package FB::Poker::Tournament;
 use Moo;
 use FB::Poker::Player;
 use FB::Poker::Table::Maker;
+use FB::Compat::Timer;
 use List::MoreUtils qw(first_value);
 use POSIX qw(ceil floor);
 use List::Util qw(max);
@@ -167,11 +168,11 @@ sub _set_start_timer {
   my $t = $self->start_time - time;
   return unless $t > 0;
   $self->start_timer(
-    EV::timer $t,
+    FB::Compat::Timer::timer($t,
     0,
     sub {
       $self->start_tour;
-    }
+    })
   );
 }
 
@@ -585,7 +586,7 @@ sub start_tour {
   $self->update_level;
 
   $self->level_timer(
-    EV::timer $self->level_duration,
+    FB::Compat::Timer::timer($self->level_duration,
     $self->level_duration,
     sub {
       if ( $self->level >= $self->max_level ) {
@@ -594,7 +595,7 @@ sub start_tour {
       }
       $self->level( $self->level + 1 );
       $self->update_level;
-    }
+    })
   );
 
   for my $t ( values %{ $self->tables } ) {
