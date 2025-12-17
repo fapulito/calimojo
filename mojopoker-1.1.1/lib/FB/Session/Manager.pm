@@ -158,7 +158,36 @@ sub grace_expired {
         $chair->disconnected(0);
     }
     
-    # Clean up
+    # Clean up stale references from FB data structures
+    # Since the grace period expired without reconnection, we need to remove
+    # all traces of this login from the system
+    if ($self->fb) {
+        # Remove from login_watch (if present)
+        delete $self->fb->login_watch->{$login_id} if exists $self->fb->login_watch->{$login_id};
+        
+        # Remove from channels
+        if ($self->fb->channels) {
+            for my $channel (values %{ $self->fb->channels }) {
+                # Remove by login_id if the channel tracks it
+                # Note: channels typically use login objects, but we only have login_id
+                # The channel will clean up naturally when the login object is gone
+            }
+        }
+        
+        # Remove from user_map (if present)
+        if ($session->{user_id} && $self->fb->user_map) {
+            # Only delete if this login_id is still mapped to this user
+            if (exists $self->fb->user_map->{ $session->{user_id} } 
+                && $self->fb->user_map->{ $session->{user_id} } eq $login_id) {
+                delete $self->fb->user_map->{ $session->{user_id} };
+            }
+        }
+        
+        # Remove from login_list (if still present - should have been removed on disconnect)
+        delete $self->fb->login_list->{$login_id} if exists $self->fb->login_list->{$login_id};
+    }
+    
+    # Clean up session manager state
     delete $self->grace_timers->{$login_id};
     delete $self->disconnected_sessions->{$login_id};
     

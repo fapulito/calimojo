@@ -1387,7 +1387,14 @@ sub _find_login_for_player {
     # Search through login_list for matching user
     for my $login_id (keys %{$self->login_list}) {
         my $login = $self->login_list->{$login_id};
-        if ($login->user && $login->user->id == $player->id) {
+        
+        # Defensive checks: ensure all required objects are defined
+        next unless $login->has_user;
+        next unless $player->has_login;
+        next unless $player->login->has_user;
+        
+        # Compare underlying user IDs
+        if ($login->user->id == $player->login->user->id) {
             return $login;
         }
     }
