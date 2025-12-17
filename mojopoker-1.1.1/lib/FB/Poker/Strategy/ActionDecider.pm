@@ -10,7 +10,11 @@ has 'config' => (
 
 has 'rng_seed' => (
     is      => 'ro',
-    default => sub { int(rand(2**31)) },
+    default => sub { 
+        # Use time and process ID for seed to avoid global rand()
+        # This ensures each instance gets a unique seed without affecting global RNG
+        return (time() ^ ($$  << 15)) & 0x7FFFFFFF;
+    },
 );
 
 has 'rng' => (
