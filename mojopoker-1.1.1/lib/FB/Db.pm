@@ -53,7 +53,8 @@ sub new_user {
    my $sth = $self->dbh->prepare($stmt);
    $sth->execute(@bind);
 
-   $opts->{id} = $self->dbh->last_insert_id( "", "", "", "" );
+   # PostgreSQL requires table/sequence name for last_insert_id
+   $opts->{id} = $self->dbh->last_insert_id(undef, undef, 'users', 'id');
    $opts->{reg_date} = time;
    $opts->{level}    = 2;
    $opts->{handle}   = $opts->{username} if $opts->{username};
