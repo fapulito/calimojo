@@ -35,7 +35,8 @@ print "User 2 chips: $chips\n";
 # Test fetch_user
 my $user = $db->fetch_user({ username => 'testuser' });
 if ($user) {
-    print "Found user: id=" . $user->id . " username=" . ($user->username || 'null') . " chips=" . $user->chips . "\n";
+    my $user_chips = $db->fetch_chips($user->id);
+    print "Found user: id=" . $user->id . " username=" . ($user->username || 'null') . " chips=" . $user_chips . "\n";
 } else {
     print "User not found!\n";
 }
@@ -43,7 +44,8 @@ if ($user) {
 # Test fetch_user by bookmark
 my $user2 = $db->fetch_user({ bookmark => 'test123' });
 if ($user2) {
-    print "Found by bookmark: id=" . $user2->id . " chips=" . $user2->chips . "\n";
+    my $user2_chips = $db->fetch_chips($user2->id);
+    print "Found by bookmark: id=" . $user2->id . " chips=" . $user2_chips . "\n";
 } else {
     print "User not found by bookmark!\n";
 }
