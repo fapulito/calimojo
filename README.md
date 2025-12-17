@@ -1,69 +1,221 @@
+# Mojo Poker
+
 ![Mojo Poker Logo](/mojopoker-1.1.1/public/img/logo.png)
 
-[![Build Status](https://api.travis-ci.com/nathanielgraham/Mojo-Poker.svg?branch=master)]
+[![CI Tests](https://github.com/fapulito/calimojo/actions/workflows/test.yaml/badge.svg)](https://github.com/fapulito/calimojo/actions/workflows/test.yaml)
 
-Mojo Poker is a web-based poker system that allows anyone to run their own private poker site.
+Mojo Poker is a web-based poker system that allows anyone to run their own private poker site. This fork adds modern deployment options including Vercel frontend hosting, NeonDB PostgreSQL support, and Facebook OAuth authentication.
+
+![SCREENSHOT](SCREENSHOT.png)
 
 ## Features
-Includes all the clasics plus a large selection of offbeat games: 
+
+Includes all the classics plus a large selection of offbeat games:
+
 Hold'em, Hold'em Jokers Wild, Pineapple, Crazy Pineapple, Omaha, Omaha Hi-Lo, 5 Card Omaha, 5 Card Omaha Hi-Lo, Courcheval, Courcheval Hi-Lo, 5 Card Draw, 5 Card Draw Deuces Wild, 5 Card Draw Jokers Wild, 2-7 Single Draw, 2-7 Triple Draw, A-5 Single Draw, A-5 Triple Draw, 7 Card Stud, 7 Card Stud Jokers Wild, 7 Card Stud Hi-Lo, Razz, High Chicago, Follow the Queen, The Bitch, Badugi, Badacey, Badeucy, Dealer's Choice.
 
-![SCREENSHOT](https://github.com/mojopoker/Mojo-Poker/blob/master/SCREENSHOT.png)
+## Architecture
 
-## Install
-Tested on Ubuntu 16.04. Other distros might require tweaking.
-Begin with a newly installed, "clean" install of Ubuntu 16.04.
-Issue the following commands in your terminal session:
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│     Vercel      │     │  DigitalOcean   │     │     NeonDB      │
+│   (Frontend)    │────▶│  (Perl Server)  │────▶│  (PostgreSQL)   │
+│   Node.js/JWT   │     │   WebSockets    │     │   Database      │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+```
 
-    cd /tmp
-    git clone https://github.com/nathanielgraham/Mojo-Poker.git
-    cd Mojo-Poker
-    sudo ./install
+- **Frontend**: Vercel-hosted Node.js with JWT authentication
+- **Backend**: Perl/Mojolicious WebSocket server for real-time gameplay
+- **Database**: NeonDB (PostgreSQL) or SQLite for local development
+- **Auth**: Facebook OAuth with stateless JWT tokens
 
-## Starting the server
-Issue the following command in your terminal session:
+## Quick Start
 
-    sudo systemctl start mojopoker.service
+### Local Development (SQLite)
 
-Now point your browser at http://localhost:3000
+```bash
+# Clone the repository
+git clone https://github.com/fapulito/calimojo.git
+cd calimojo
 
-## Creating new tables
-To create a new six handed No-Limit Hold'em table for example, issue the following command:
+# Install Perl dependencies
+cd mojopoker-1.1.1
+cpanm --installdeps .
 
-    /opt/mojopoker/script/mpadmin.pl create_ring -game_class holdem -limit NL -chair_count 6
+# Initialize SQLite databases
+cd db
+sqlite3 fb.db < fb.schema
+sqlite3 poker.db < poker.schema
+cd ..
 
-See mpadmin.pl --help for a complete list of options. 
+# Start the Perl server
+perl script/mojopoker daemon -l http://*:8080
+```
 
-## Admin tool
-mpadmin.pl is a command-line ultility for creating and deleting ring games, editing player info, crediting chips, and other admin tasks.  For a complete list of options, type:
+### Vercel Frontend (Local)
 
-    sudo /opt/mojopoker/script/mpadmin.pl --help 
+```bash
+cd vercel
+npm install
+npm run dev
+```
 
-## Advanced websocket shell
-wsshell.pl is a command-line utility for sending JSON encoded WebSocket messages directly to the server. Useful for automating certain tasks. To bulk load many games at once for example, issue the following command in your terminal session:
+Visit http://localhost:3000
 
-    sudo /opt/mojopoker/script/wsshell.pl < /opt/mojopoker/db/example_games
+## Production Deployment
 
-## Running in production
-Additional steps to run a secure site:
-- [ ] Facebook login feature won't work without a registered domain 
-- [ ] Setup nginx as reverse proxy to provide SSL/TLS certificate
-- [ ] Change admin password
-- [ ] Add firewall for DDOS protection
-- [ ] Anything else? 
+See [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) for complete instructions covering:
 
-See [Mojolicious::Guides::Cookbook](https://metacpan.org/pod/distribution/Mojolicious/lib/Mojolicious/Guides/Cookbook.pod). You can also contact me directly if you need additional support.
+1. **NeonDB Setup** - PostgreSQL database in the cloud
+2. **DigitalOcean VPS** - Perl backend server
+3. **Vercel Deployment** - Frontend with Facebook OAuth
+4. **SSL/Nginx** - Secure WebSocket connections
+
+### Environment Variables
+
+**Vercel Frontend:**
+```
+FACEBOOK_APP_ID=your_app_id
+FACEBOOK_APP_SECRET=your_secret
+FACEBOOK_CALLBACK_URL=https://your-app.vercel.app/auth/facebook/callback
+JWT_SECRET=random_32_char_string
+```
+
+**Perl Backend:**
+```
+DB_HOST=your-neondb-host.neon.tech
+DB_PORT=5432
+DB_NAME=neondb
+DB_USER=your_username
+DB_PASSWORD=your_password
+```
+
+
+## Windows Development
+
+```batch
+cd mojopoker-1.1.1
+install_win.bat
+perl script/mojopoker_win.pl daemon -l http://*:8080
+```
+
+## Creating Tables
+
+Create a new six-handed No-Limit Hold'em table:
+
+```bash
+perl script/mpadmin.pl create_ring -game_class holdem -limit NL -chair_count 6
+```
+
+See `mpadmin.pl --help` for all options.
+
+## Admin Tools
+
+- **mpadmin.pl** - Create/delete games, edit players, credit chips
+- **wsshell.pl** - Send JSON WebSocket messages directly to server
+
+```bash
+# Bulk load games
+perl script/wsshell.pl < db/example_games
+
+# Admin help
+perl script/mpadmin.pl --help
+```
+
+## Code Quality with CodeRabbit
+
+This project uses [CodeRabbit](https://coderabbit.ai) for automated code review on pull requests.
+
+### How It Works
+
+1. **Open a Pull Request** - CodeRabbit automatically reviews your changes
+2. **Review Comments** - AI-powered suggestions appear as PR comments
+3. **Iterate** - Address feedback and push updates
+4. **Merge** - Once approved, merge with confidence
+
+### What CodeRabbit Checks
+
+- Code style and best practices
+- Security vulnerabilities
+- Performance issues
+- Test coverage gaps
+- Documentation completeness
+- Dependency updates
+
+### Configuration
+
+CodeRabbit is configured via `.coderabbit.yaml` (if present) or uses sensible defaults. Reviews are triggered automatically on:
+- New pull requests
+- Push to existing PRs
+- Manual review requests
+
+### Interacting with CodeRabbit
+
+Comment on your PR to interact:
+- `@coderabbitai review` - Request a new review
+- `@coderabbitai summary` - Get a PR summary
+- `@coderabbitai resolve` - Mark suggestions as resolved
+
+## Testing
+
+```bash
+cd mojopoker-1.1.1
+
+# Run all tests
+prove -v t/
+
+# Run specific test
+prove -v t/migrate.t
+```
+
+CI runs automatically on push via GitHub Actions.
+
+## Project Structure
+
+```
+calimojo/
+├── mojopoker-1.1.1/          # Perl backend
+│   ├── lib/                  # Perl modules (FB.pm, FB::Poker, etc.)
+│   ├── script/               # CLI tools (mojopoker, mpadmin.pl)
+│   ├── db/                   # Database schemas and migrations
+│   ├── public/               # Static assets
+│   ├── templates/            # HTML templates
+│   └── t/                    # Perl tests
+├── vercel/                   # Node.js frontend
+│   ├── api/                  # Serverless API routes
+│   ├── lib/                  # Express server
+│   └── public/               # Static frontend files
+├── DEPLOYMENT_GUIDE.md       # Production deployment instructions
+├── LEGAL_DATA_REQUEST_POLICY.md  # Data request compliance policy
+└── CODE_REVIEW.md            # Code review notes
+```
+
+## Recent Improvements
+
+- **JWT Authentication** - Stateless auth for Vercel serverless (no Redis needed)
+- **NeonDB Support** - PostgreSQL cloud database integration
+- **Bcrypt Passwords** - Secure password hashing with cost factor 12
+- **Timer Compatibility** - Fixed EV::timer semantics for recurring timers
+- **Windows Support** - Improved install_win.bat with error handling
+- **CI/CD** - GitHub Actions with PostgreSQL integration tests
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Open a pull request (CodeRabbit will review automatically)
+5. Address feedback and merge
+
+## License
+
+Copyright (C) 2019, Nathaniel J. Graham  
+Copyright (C) 2024, California Vision
+
+This program is free software under the Artistic License version 2.0.  
+https://dev.perl.org/licenses/artistic.html
 
 ## Contact
-Questions and bug reports to ngraham@cpan.org
 
-## TODO 
-- [ ] Add support for tournaments
-- [ ] Change hand evaluator to [Poker::Eval](https://metacpan.org/pod/Poker::Eval)
-
-## COPYRIGHT AND LICENSE
-Copyright (C) 2019, Nathaniel J. Graham
-
-This program is free software, you can redistribute it and/or modify it
-nder the terms of the Artistic License version 2.0.
-https://dev.perl.org/licenses/artistic.html
+- Original author: ngraham@cpan.org
+- This fork: legal@california.vision
