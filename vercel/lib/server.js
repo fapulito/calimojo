@@ -96,8 +96,9 @@ if (facebookAuthEnabled) {
       res.redirect('/');
     }
   );
-} else {
-  // Dev mode: auto-login as guest when Facebook auth is not configured
+} else if (process.env.NODE_ENV === 'development') {
+  // Dev mode ONLY: auto-login as guest when Facebook auth is not configured
+  console.log('Dev mode: Guest login enabled (NODE_ENV=development)');
   app.get('/auth/facebook', (req, res) => {
     // Create a mock guest user for development
     const guestUser = {
@@ -114,6 +115,16 @@ if (facebookAuthEnabled) {
       }
       console.log('Dev mode: Guest user logged in');
       res.redirect('/');
+    });
+  });
+} else {
+  // Production without Facebook auth configured - reject with 403
+  console.warn('WARNING: Facebook auth not configured in production. /auth/facebook will return 403.');
+  app.get('/auth/facebook', (req, res) => {
+    console.warn('Blocked guest login attempt in non-development environment');
+    res.status(403).json({
+      error: 'Authentication not available',
+      message: 'Facebook authentication is not configured and guest login is disabled in production.'
     });
   });
 }

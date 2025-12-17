@@ -30,7 +30,7 @@ jobs:
       
       - name: Install dependencies
         run: |
-          cpanm --notest DBD::Pg DBI SQL::Abstract Moo Digest::SHA
+          cpanm --notest DBD::SQLite DBD::Pg DBI SQL::Abstract Moo Digest::SHA
           cpanm --notest Test::More Test::Exception Test::MockModule Test::Output
       
       - name: Setup PostgreSQL schema
