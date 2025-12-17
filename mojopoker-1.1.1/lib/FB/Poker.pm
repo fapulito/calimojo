@@ -1424,7 +1424,7 @@ sub _execute_house_player_action {
         $self->fold($login, $opts);
     }
     elsif ($action eq 'draw' || $action eq 'discard') {
-        $opts->{cards} = $decision->{cards} || [];
+        $opts->{card_idx} = $decision->{cards} || [];
         if ($action eq 'draw') {
             $self->draw($login, $opts);
         } else {
