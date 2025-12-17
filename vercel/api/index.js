@@ -6,61 +6,8 @@ const FacebookStrategy = require('passport-facebook').Strategy;
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const path = require('path');
-const { WebSocketServer } = require('ws');
-const { createServer } = require('http');
-const facebookAuthRouter = require('./auth/facebook');
 
 const app = express();
-
-// WebSocket server setup
-let wss;
-function setupWebSocketServer(server) {
-  wss = new WebSocketServer({ server });
-
-  wss.on('connection', (ws, req) => {
-    console.log('New WebSocket connection established');
-
-    ws.on('message', (message) => {
-      console.log('Received WebSocket message:', message.toString());
-      try {
-        const data = JSON.parse(message.toString());
-
-        // Handle different message types
-        if (data.type === 'join_game') {
-          console.log(`User ${data.userId} joining game ${data.gameId}`);
-          ws.send(JSON.stringify({
-            type: 'game_ready',
-            message: 'Game 3 is ready! In a full implementation, you would now be connected to the poker table via WebSocket.',
-            gameId: data.gameId,
-            userId: data.userId
-          }));
-        } else {
-          ws.send(JSON.stringify({
-            type: 'acknowledgment',
-            message: 'Message received',
-            originalMessage: data
-          }));
-        }
-      } catch (error) {
-        console.error('Error processing WebSocket message:', error);
-        ws.send(JSON.stringify({
-          type: 'error',
-          message: 'Invalid message format'
-        }));
-      }
-    });
-
-    ws.on('close', () => {
-      console.log('WebSocket connection closed');
-    });
-
-    ws.on('error', (error) => {
-      console.error('WebSocket error:', error);
-    });
-  });
-
-  console.log('WebSocket server initialized');
-}
 
 // Middleware setup
 app.use(express.json());
@@ -88,70 +35,89 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Facebook Strategy
-passport.use(new FacebookStrategy({
-    clientID: process.env.FACEBOOK_APP_ID,
-    clientSecret: process.env.FACEBOOK_APP_SECRET,
-    callbackURL: process.env.FACEBOOK_CALLBACK_URL || '/auth/facebook/callback',
-    profileFields: ['id', 'displayName', 'emails', 'photos']
-  },
-  function(accessToken, refreshToken, profile, done) {
-    // Here you would typically find or create a user in your database
-    const user = {
-      id: profile.id,
-      displayName: profile.displayName,
-      email: profile.emails ? profile.emails[0].value : null,
-      photo: profile.photos ? profile.photos[0].value : null,
-      accessToken: accessToken
-    };
-    return done(null, user);
-  }
-));
+// Facebook Strategy - only configure if credentials are provided
+const facebookAuthEnabled = process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET;
+
+if (facebookAuthEnabled) {
+  passport.use(new FacebookStrategy({
+      clientID: process.env.FACEBOOK_APP_ID,
+      clientSecret: process.env.FACEBOOK_APP_SECRET,
+      callbackURL: process.env.FACEBOOK_CALLBACK_URL || '/auth/facebook/callback',
+      profileFields: ['id', 'displayName', 'emails', 'photos']
+    },
+    function(accessToken, refreshToken, profile, done) {
+      const user = {
+        id: profile.id,
+        displayName: profile.displayName,
+        email: profile.emails ? profile.emails[0].value : null,
+        photo: profile.photos ? profile.photos[0].value : null,
+        accessToken: accessToken
+      };
+      return done(null, user);
+    }
+  ));
+}
+
 
 // Serialize and deserialize user
 passport.serializeUser((user, done) => {
-  done(null, user.id);
+  done(null, JSON.stringify(user));
 });
 
-passport.deserializeUser((id, done) => {
-  // Here you would typically look up the user by id in your database
-  const user = {
-    id: id,
-    displayName: 'Facebook User',
-    // In a real app, you would fetch this from your database
-  };
-  done(null, user);
-});
-
-// Routes
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/index.html'));
+passport.deserializeUser((data, done) => {
+  try {
+    const user = JSON.parse(data);
+    done(null, user);
+  } catch (e) {
+    done(null, { id: data, displayName: 'User' });
+  }
 });
 
 // Facebook Auth Routes
-app.get('/auth/facebook',
-  passport.authenticate('facebook', { scope: ['email'] })
-);
+if (facebookAuthEnabled) {
+  app.get('/auth/facebook',
+    passport.authenticate('facebook', { scope: ['email'] })
+  );
 
-app.get('/auth/facebook/callback',
-  passport.authenticate('facebook', { failureRedirect: '/login' }),
-  function(req, res) {
-    // Successful authentication, redirect home.
-    res.redirect('/');
-  }
-);
+  app.get('/auth/facebook/callback',
+    passport.authenticate('facebook', { failureRedirect: '/?error=auth_failed' }),
+    function(req, res) {
+      res.redirect('/');
+    }
+  );
+} else {
+  // Dev mode: auto-login as guest
+  app.get('/auth/facebook', (req, res) => {
+    const guestUser = {
+      id: 'dev_guest_' + Date.now(),
+      displayName: 'Dev Guest',
+      email: 'guest@localhost',
+      photo: null,
+      isGuest: true
+    };
+    
+    req.login(guestUser, (err) => {
+      if (err) {
+        return res.redirect('/?error=guest_login_failed');
+      }
+      res.redirect('/');
+    });
+  });
+}
 
 // Logout route
 app.get('/logout', (req, res) => {
   req.logout(() => {
-    req.session.destroy();
+    if (req.session) {
+      req.session.destroy();
+    }
     res.redirect('/');
   });
 });
 
 // API route to check authentication status
 app.get('/api/auth/status', (req, res) => {
-  if (req.isAuthenticated()) {
+  if (req.isAuthenticated && req.isAuthenticated()) {
     res.json({
       authenticated: true,
       user: req.user
@@ -163,9 +129,8 @@ app.get('/api/auth/status', (req, res) => {
   }
 });
 
-// API route for poker functionality (placeholder)
+// API route for poker games
 app.get('/api/poker/games', (req, res) => {
-  // In a real implementation, this would return available poker games
   res.json({
     games: [
       { id: 1, name: "Texas Hold'em", players: '2-10', type: 'ring' },
@@ -175,9 +140,9 @@ app.get('/api/poker/games', (req, res) => {
   });
 });
 
-// API route to join a poker game - integrates with Perl backend
+// API route to join a poker game
 app.post('/api/poker/join', (req, res) => {
-  if (!req.isAuthenticated()) {
+  if (!req.isAuthenticated || !req.isAuthenticated()) {
     return res.status(401).json({
       success: false,
       message: 'You must be logged in to join a game'
@@ -185,7 +150,6 @@ app.post('/api/poker/join', (req, res) => {
   }
 
   const { gameId } = req.body;
-
   if (!gameId) {
     return res.status(400).json({
       success: false,
@@ -193,17 +157,14 @@ app.post('/api/poker/join', (req, res) => {
     });
   }
 
-  // Determine WebSocket URL based on environment
-  const websocketUrl = process.env.NODE_ENV === 'production'
-    ? `wss://${req.headers.host}/api/websocket`
-    : `ws://${req.headers.host}/api/websocket`;
-
-  // Return success response with proper WebSocket connection info
+  // In production, this would connect to the Perl backend
+  const backendUrl = process.env.BACKEND_WS_URL || 'ws://localhost:8080';
+  
   res.json({
     success: true,
     message: 'Game join request processed',
     gameId: gameId,
-    websocketUrl: websocketUrl,
+    websocketUrl: backendUrl,
     user: {
       id: req.user.id,
       displayName: req.user.displayName
@@ -211,31 +172,10 @@ app.post('/api/poker/join', (req, res) => {
   });
 });
 
-// Mount the Facebook auth router
-app.use('/api/auth/facebook', facebookAuthRouter);
-
-// Serve static files from public directory
-app.use(express.static(path.join(__dirname, '../public')));
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).send('Something broke!');
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Create HTTP server for Vercel
-const server = createServer(app);
-
-// Initialize WebSocket server
-setupWebSocketServer(server);
-
-// Start server - this will be handled by Vercel
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV}`);
-  console.log(`Facebook Auth: ${process.env.FACEBOOK_APP_ID ? 'Configured' : 'Not configured'}`);
-});
-
-// Export the server for Vercel
-module.exports = server;
+// Export for Vercel serverless
+module.exports = app;

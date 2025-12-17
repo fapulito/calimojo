@@ -6,8 +6,7 @@
   "scripts": {
     "start": "node lib/server.js",
     "dev": "nodemon lib/server.js",
-    "vercel-build": "npm install && npm run build",
-    "build": "echo 'No build step needed'"
+    "build": "echo 'Build complete'"
   },
   "dependencies": {
     "express": "^4.18.2",
@@ -16,13 +15,12 @@
     "express-session": "^1.17.3",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
-    "dotenv": "^16.0.3",
-    "ejs": "^3.1.9"
+    "dotenv": "^16.0.3"
   },
   "devDependencies": {
     "nodemon": "^2.0.22"
   },
   "engines": {
-    "node": ">=16.x"
+    "node": ">=18.x"
   }
 }
