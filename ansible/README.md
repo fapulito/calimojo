@@ -106,7 +106,8 @@ ansible-playbook -i inventory.ini playbook.yml --tags deploy
 ```bash
 ssh root@YOUR_IP
 journalctl -u mojopoker -n 50
-perl -c /var/www/mojopoker/mojopoker-1.1.1/script/mojopoker.pl
+# Replace VERSION with your actual version (e.g., 1.1.1)
+perl -c /var/www/mojopoker/mojopoker-VERSION/script/mojopoker.pl
 ```
 
 **Nginx errors:**
