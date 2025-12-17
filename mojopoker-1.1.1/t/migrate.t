@@ -2,20 +2,13 @@
 
 use strict;
 use warnings;
-use Test::More tests => 45;
+use Test::More;
 use Test::Exception;
 use Test::MockModule;
 use File::Temp qw(tempdir tempfile);
 use DBI;
 use FindBin;
 use lib "$FindBin::Bin/../lib";
-
-# Capture STDOUT for testing verbose output
-my $output = '';
-{
-    no warnings 'redefine';
-    *CORE::GLOBAL::print = sub { $output .= join('', @_) };
-}
 
 # Test 1-3: Module loading and compilation
 BEGIN {
@@ -24,10 +17,8 @@ BEGIN {
     ok(-f "$FindBin::Bin/../db/migrate.pl", 'Migration script exists');
 }
 
-# Test 4-10: SQLite connection tests
+# Test: SQLite connection tests
 subtest 'SQLite connection' => sub {
-    plan tests => 7;
-    
     my $tempdir = tempdir(CLEANUP => 1);
     my $db_path = "$tempdir/test.db";
     
@@ -78,10 +69,8 @@ subtest 'SQLite connection' => sub {
     $dbh->disconnect;
 };
 
-# Test 11-20: PostgreSQL connection tests
+# Test: PostgreSQL connection tests
 subtest 'PostgreSQL connection mock' => sub {
-    plan tests => 10;
-    
     my $mock_dbi = Test::MockModule->new('DBI');
     my $connected = 0;
     my $connection_string = '';
@@ -117,10 +106,8 @@ subtest 'PostgreSQL connection mock' => sub {
     ok($credentials, 'Credentials present');
 };
 
-# Test 21-28: Data migration tests
+# Test: Data migration tests
 subtest 'User migration logic' => sub {
-    plan tests => 8;
-    
     # Create temporary SQLite database
     my ($fh, $filename) = tempfile(SUFFIX => '.db', UNLINK => 1);
     close $fh;
@@ -188,10 +175,8 @@ subtest 'User migration logic' => sub {
     $sqlite_dbh->disconnect;
 };
 
-# Test 29-33: Error handling tests
+# Test: Error handling tests
 subtest 'Error handling' => sub {
-    plan tests => 5;
-    
     # Test missing PostgreSQL URL
     delete $ENV{DATABASE_URL};
     ok(!$ENV{DATABASE_URL}, 'DATABASE_URL not set');
@@ -221,10 +206,8 @@ subtest 'Error handling' => sub {
     }
 };
 
-# Test 34-38: Dry-run mode tests
+# Test: Dry-run mode tests
 subtest 'Dry-run mode' => sub {
-    plan tests => 5;
-    
     my $tempdir = tempdir(CLEANUP => 1);
     my $db_path = "$tempdir/dryrun.db";
     
@@ -265,10 +248,8 @@ subtest 'Dry-run mode' => sub {
     $dbh->disconnect;
 };
 
-# Test 39-42: Data integrity tests
+# Test: Data integrity tests
 subtest 'Data integrity verification' => sub {
-    plan tests => 4;
-    
     my ($fh, $filename) = tempfile(SUFFIX => '.db', UNLINK => 1);
     close $fh;
     
@@ -305,10 +286,8 @@ subtest 'Data integrity verification' => sub {
     $dbh->disconnect;
 };
 
-# Test 43-45: Command-line option tests
+# Test: Command-line options parsing
 subtest 'Command-line options parsing' => sub {
-    plan tests => 3;
-    
     # Test that GetOptions is available
     use_ok('Getopt::Long');
     
@@ -316,7 +295,7 @@ subtest 'Command-line options parsing' => sub {
     local @ARGV = ('--verbose', '--dry-run', '--help');
     
     my %opts;
-    GetOptions(
+    Getopt::Long::GetOptions(
         'verbose' => \$opts{verbose},
         'dry-run' => \$opts{dry_run},
         'help' => \$opts{help},

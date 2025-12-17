@@ -12,12 +12,22 @@ use FindBin;
 plan skip_all => 'PostgreSQL integration tests require DATABASE_URL' 
     unless $ENV{DATABASE_URL} && $ENV{RUN_INTEGRATION_TESTS};
 
-plan tests => 15;
-
-# Test 1-5: Full migration workflow
-subtest 'Complete migration workflow' => sub {
-    plan tests => 5;
+# Helper function to convert DATABASE_URL to DBI connection string
+sub parse_database_url {
+    my $url = shift;
     
+    # Parse postgresql://user:pass@host:port/dbname
+    if ($url =~ m{^postgresql://([^:]+):([^@]+)@([^:]+):(\d+)/(.+)$}) {
+        my ($user, $pass, $host, $port, $dbname) = ($1, $2, $3, $4, $5);
+        # Remove any query params from dbname
+        $dbname =~ s/\?.*//;
+        return ("dbi:Pg:dbname=$dbname;host=$host;port=$port", $user, $pass);
+    }
+    die "Invalid DATABASE_URL format: $url";
+}
+
+# Test: Full migration workflow
+subtest 'Complete migration workflow' => sub {
     # Setup: Create temporary SQLite database with test data
     my ($fh, $sqlite_file) = tempfile(SUFFIX => '.db', UNLINK => 1);
     close $fh;
@@ -56,8 +66,9 @@ subtest 'Complete migration workflow' => sub {
     
     $sqlite_dbh->disconnect;
     
-    # Connect to PostgreSQL
-    my $pg_dbh = DBI->connect($ENV{DATABASE_URL}, "", "", {
+    # Connect to PostgreSQL using parsed URL
+    my ($dsn, $user, $pass) = parse_database_url($ENV{DATABASE_URL});
+    my $pg_dbh = DBI->connect($dsn, $user, $pass, {
         RaiseError => 1,
         AutoCommit => 0,  # Use transaction for cleanup
         pg_enable_utf8 => 1,
@@ -108,11 +119,10 @@ subtest 'Complete migration workflow' => sub {
     $sqlite_for_read->disconnect;
 };
 
-# Test 6-10: Transaction rollback on error
+# Test: Transaction rollback on error
 subtest 'Transaction rollback on error' => sub {
-    plan tests => 5;
-    
-    my $pg_dbh = DBI->connect($ENV{DATABASE_URL}, "", "", {
+    my ($dsn, $user, $pass) = parse_database_url($ENV{DATABASE_URL});
+    my $pg_dbh = DBI->connect($dsn, $user, $pass, {
         RaiseError => 1,
         AutoCommit => 0,
         pg_enable_utf8 => 1,
@@ -148,10 +158,8 @@ subtest 'Transaction rollback on error' => sub {
     $pg_dbh->disconnect;
 };
 
-# Test 11-15: Performance with large dataset
+# Test: Performance with large dataset
 subtest 'Performance with large dataset' => sub {
-    plan tests => 5;
-    
     my ($fh, $sqlite_file) = tempfile(SUFFIX => '.db', UNLINK => 1);
     close $fh;
     
