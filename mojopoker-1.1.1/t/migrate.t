@@ -254,7 +254,8 @@ subtest 'Data integrity verification' => sub {
     close $fh;
     
     my $dbh = DBI->connect("dbi:SQLite:dbname=$filename", "", "", {
-        RaiseError => 1,
+        RaiseError => 0,  # Don't raise errors automatically for constraint tests
+        PrintError => 0,  # Don't print errors
         AutoCommit => 1,
     });
     
@@ -267,17 +268,16 @@ subtest 'Data integrity verification' => sub {
     });
     
     # Test unique constraint
-    $dbh->do(q{INSERT INTO user (id, username, chips) VALUES (1, 'unique_user', 1000)});
-    ok(1, 'First user inserted');
+    my $rv = $dbh->do(q{INSERT INTO user (id, username, chips) VALUES (1, 'unique_user', 1000)});
+    ok($rv, 'First user inserted');
     
-    dies_ok {
-        $dbh->do(q{INSERT INTO user (id, username, chips) VALUES (2, 'unique_user', 2000)});
-    } 'Duplicate username rejected';
+    # Test duplicate username is rejected
+    $rv = $dbh->do(q{INSERT INTO user (id, username, chips) VALUES (2, 'unique_user', 2000)});
+    ok(!$rv, 'Duplicate username rejected') or diag("Expected failure but insert succeeded");
     
-    # Test check constraint
-    dies_ok {
-        $dbh->do(q{INSERT INTO user (id, username, chips) VALUES (3, 'negative_chips', -100)});
-    } 'Negative chips rejected';
+    # Test check constraint - negative chips rejected
+    $rv = $dbh->do(q{INSERT INTO user (id, username, chips) VALUES (3, 'negative_chips', -100)});
+    ok(!$rv, 'Negative chips rejected') or diag("Expected failure but insert succeeded");
     
     # Verify data integrity
     my ($count) = $dbh->selectrow_array('SELECT COUNT(*) FROM user');
