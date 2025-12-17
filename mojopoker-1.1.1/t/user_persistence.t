@@ -105,28 +105,32 @@ subtest 'Logout persistence' => sub {
 # Test: 9.4 Verify game reconnection
 # Requirements: 7.4
 subtest 'Game reconnection' => sub {
-    # Verification of watch_table reconnection logic
-    # 
-    # Code review confirms that FB::Poker::watch_table (lines 528-532 in FB/Poker.pm):
-    # 1. Finds existing chairs for the reconnecting login
-    # 2. Clears temporary flags (check_fold, stand_flag)
-    # 3. Restores player->login reference to reconnect the player
-    # 4. Sends table_snap and player_snap to restore game state
-    #
-    # This ensures:
-    # - Seat position is preserved (chair is found by login)
-    # - Chip stack at table is preserved (chair maintains chip count)
-    # - Player can continue playing from where they left off
-    #
-    # Full integration testing would require:
-    # - Creating a poker table
-    # - Seating a player with chips
-    # - Simulating disconnect
-    # - Simulating reconnect via watch_table
-    # - Verifying seat and chips are intact
-    
-    pass('Code review confirms watch_table restores seat for reconnecting users');
-    pass('Code review confirms chip stack at table is preserved');
+    TODO: {
+        local $TODO = 'Integration test requires full table/game infrastructure';
+        
+        # This test requires:
+        # 1. Create a poker table with FB->table_maker->ring_table()
+        # 2. Create a user and login with FB::Login::WebSocket::Mock
+        # 3. Seat the player at the table with chips
+        # 4. Record initial state: chair position, chip count
+        # 5. Simulate disconnect by clearing player->login reference
+        # 6. Call FB::Poker::watch_table() to reconnect
+        # 7. Assert:
+        #    - chair->player->login is restored
+        #    - chair->chips unchanged
+        #    - table_snap and player_snap messages sent
+        #
+        # Code review confirms FB::Poker::watch_table (FB/Poker.pm):
+        # - Finds existing chairs via _find_chairs($login)
+        # - Clears temporary flags (check_fold, stand_flag)
+        # - Restores player->login reference
+        # - Sends table_snap and player_snap to restore game state
+        
+        fail('TODO: Implement full integration test for watch_table reconnection');
+        fail('TODO: Verify seat position preserved after reconnect');
+        fail('TODO: Verify chip stack preserved after reconnect');
+        fail('TODO: Verify table_snap and player_snap sent on reconnect');
+    }
 };
 
 done_testing();
