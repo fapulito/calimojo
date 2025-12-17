@@ -16,11 +16,30 @@ if %ERRORLEVEL% NEQ 0 (
     exit /b 1
 )
 
-echo [1/4] Perl found. Installing CPAN modules...
+REM Check if cpanm is installed
+where cpanm >nul 2>nul
+if %ERRORLEVEL% NEQ 0 (
+    echo ERROR: cpanm not found in PATH
+    echo Please install cpanm first. Run:
+    echo   cpan App::cpanminus
+    echo Or download from https://cpanmin.us/
+    pause
+    exit /b 1
+)
+
+echo [1/4] Perl and cpanm found. Installing CPAN modules...
 echo This may take several minutes...
 echo.
 
 cpanm Mojolicious DBI DBD::SQLite Moo Tie::IxHash List::AllUtils Algorithm::Combinatorics Digest::SHA SQL::Abstract Data::Dumper Getopt::Long
+if %ERRORLEVEL% NEQ 0 (
+    echo.
+    echo ERROR: CPAN module installation failed!
+    echo Please check the error messages above and try again.
+    echo You may need to run this script as Administrator.
+    pause
+    exit /b 1
+)
 
 echo.
 echo [2/4] Skipping optional Poker modules...
@@ -28,23 +47,73 @@ echo (Poker::Eval and Poker::Robot are optional - the app has built-in evaluator
 
 echo.
 echo [3/4] Initializing databases...
-cd db
+
+REM Verify db directory exists
+if not exist "db" (
+    echo ERROR: db directory not found!
+    echo Please run this script from the mojopoker-1.1.1 directory.
+    pause
+    exit /b 1
+)
+
+pushd db
+
+REM Verify schema files exist
+if not exist "fb.schema" (
+    echo ERROR: fb.schema not found in db directory!
+    echo The installation files may be incomplete.
+    popd
+    pause
+    exit /b 1
+)
+
+if not exist "poker.schema" (
+    echo ERROR: poker.schema not found in db directory!
+    echo The installation files may be incomplete.
+    popd
+    pause
+    exit /b 1
+)
 
 REM Find sqlite3 - try PATH first, then Strawberry location
+set SQLITE3_CMD=
 where sqlite3 >nul 2>nul
 if %ERRORLEVEL% EQU 0 (
-    sqlite3 fb.db < fb.schema
-    sqlite3 poker.db < poker.schema
+    set SQLITE3_CMD=sqlite3
 ) else (
     if exist "C:\Strawberry\c\bin\sqlite3.exe" (
-        C:\Strawberry\c\bin\sqlite3.exe fb.db < fb.schema
-        C:\Strawberry\c\bin\sqlite3.exe poker.db < poker.schema
+        set SQLITE3_CMD=C:\Strawberry\c\bin\sqlite3.exe
     ) else (
-        echo WARNING: sqlite3 not found. Please initialize databases manually.
+        echo ERROR: sqlite3 not found!
+        echo Please ensure sqlite3 is in PATH or Strawberry Perl is installed.
+        popd
+        pause
+        exit /b 1
     )
 )
 
-cd ..
+echo Creating fb.db...
+%SQLITE3_CMD% fb.db < fb.schema
+if %ERRORLEVEL% NEQ 0 (
+    echo ERROR: Failed to initialize fb.db!
+    echo Check that fb.schema is valid and you have write permissions.
+    popd
+    pause
+    exit /b 1
+)
+
+echo Creating poker.db...
+%SQLITE3_CMD% poker.db < poker.schema
+if %ERRORLEVEL% NEQ 0 (
+    echo ERROR: Failed to initialize poker.db!
+    echo Check that poker.schema is valid and you have write permissions.
+    popd
+    pause
+    exit /b 1
+)
+
+echo Databases initialized successfully.
+popd
 
 echo.
 echo [4/4] Installation complete!
