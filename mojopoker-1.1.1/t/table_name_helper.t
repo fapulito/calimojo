@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use Test::More;
 use File::Temp;
+use lib 'lib';
 
 # Test the _get_table_name helper method
 

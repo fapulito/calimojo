@@ -7,6 +7,7 @@ use Test::Exception;
 use File::Temp qw(tempdir tempfile);
 use DBI;
 use FindBin;
+use lib "$FindBin::Bin/../lib";
 
 # Skip integration tests if no PostgreSQL is available
 plan skip_all => 'PostgreSQL integration tests require DATABASE_URL' 

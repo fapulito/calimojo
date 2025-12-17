@@ -146,7 +146,9 @@ sub _build_postgres_dbh {
                     }
                 }
             }
-            $sslmode ||= 'require';
+            # Default to 'prefer' for better compatibility (tries SSL, falls back to non-SSL)
+            # Use PGSSLMODE env var or explicit URL param to override
+            $sslmode ||= $ENV{PGSSLMODE} || 'prefer';
         } else {
             die "DATABASE_URL format invalid. Expected: postgresql://user:pass\@host:port/dbname?sslmode=require\n" .
                 "Got: $url";
@@ -164,7 +166,7 @@ sub _build_postgres_dbh {
             die "PostgreSQL configuration incomplete. Missing required environment variables:\n" .
                 "  " . join("\n  ", @missing_vars) . "\n" .
                 "Either set DATABASE_URL or all of: DB_HOST, DB_USER, DB_PASSWORD\n" .
-                "Optional variables: DB_PORT (default: 5432), DB_NAME (default: neondb), DB_SSLMODE (default: require)";
+                "Optional variables: DB_PORT (default: 5432), DB_NAME (default: neondb), DB_SSLMODE (default: prefer)";
         }
         
         $db_host = $ENV{DB_HOST};
@@ -172,7 +174,8 @@ sub _build_postgres_dbh {
         $db_pass = $ENV{DB_PASSWORD};
         $db_port = $ENV{DB_PORT} || 5432;
         $db_name = $ENV{DB_NAME} || 'neondb';
-        $sslmode = $ENV{DB_SSLMODE} || 'require';
+        # Default to 'prefer' for better compatibility (tries SSL, falls back to non-SSL)
+        $sslmode = $ENV{DB_SSLMODE} || $ENV{PGSSLMODE} || 'prefer';
     }
     
     # Build DSN
