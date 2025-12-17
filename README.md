@@ -59,10 +59,14 @@ perl script/mojopoker.pl
 ```bash
 cd vercel
 npm install
-npm run dev
+
+# Use a different port to avoid conflict with Perl backend
+PORT=3001 npm run dev
 ```
 
-Visit http://localhost:3000
+Visit http://localhost:3001
+
+> **Port Conflict Note:** Both the Perl backend and Node frontend default to port 3000. For local development, run them on different ports. In production, they run on separate servers (DigitalOcean for Perl, Vercel for Node).
 
 ## Production Deployment
 
