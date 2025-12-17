@@ -168,9 +168,10 @@ sub grace_expired {
         # Remove from channels
         if ($self->fb->channels) {
             for my $channel (values %{ $self->fb->channels }) {
-                # Remove by login_id if the channel tracks it
-                # Note: channels typically use login objects, but we only have login_id
-                # The channel will clean up naturally when the login object is gone
+                # Explicitly remove login from channel's logins hash
+                if ($channel->can('logins') && $channel->logins) {
+                    delete $channel->logins->{$login_id} if exists $channel->logins->{$login_id};
+                }
             }
         }
         
