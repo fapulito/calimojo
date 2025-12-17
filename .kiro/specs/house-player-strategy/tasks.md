@@ -243,11 +243,23 @@
     - Confirm chip stack at table is preserved
     - _Requirements: 7.4_
 
-- [ ] 10. Checkpoint - Ensure all tests pass
+- [x] 10. Checkpoint - Ensure all tests pass
+
+
+
+
+
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 11. Verify chip management
-  - [ ] 11.1 Verify chip balance consistency
+- [x] 11. Verify chip management
+
+
+
+
+
+  - [x] 11.1 Verify chip balance consistency
+
+
     - Review credit_chips, debit_chips, table_chips operations
     - Confirm atomic updates maintain consistency
     - _Requirements: 8.1, 8.3_
@@ -256,7 +268,9 @@
     - **Property 14: Chip Balance Consistency**
     - **Validates: Requirements 8.1, 8.3**
 
-  - [ ] 11.3 Verify reload logic
+  - [x] 11.3 Verify reload logic
+
+
     - Review reload() method in FB::Poker
     - Confirm chips credited to reach 400 when below
     - Confirm invested updated accordingly
@@ -266,13 +280,22 @@
     - **Property 15: Reload Correctness**
     - **Validates: Requirements 8.2**
 
-  - [ ] 11.5 Verify daily reset
+  - [x] 11.5 Verify daily reset
+
+
     - Review reset_leaders() method
     - Confirm all users reset to 400 chips, 400 invested
     - _Requirements: 8.4_
 
-- [ ] 12. Verify house player account management
-  - [ ] 12.1 Verify house player naming convention
+
+- [x] 12. Verify house player account management
+
+
+
+
+  - [x] 12.1 Verify house player naming convention
+
+
     - Review add_house_players.pl script
     - Confirm username pattern HousePlayer\d+
     - _Requirements: 9.1_
@@ -281,7 +304,9 @@
     - **Property 16: House Player Naming Convention**
     - **Validates: Requirements 9.1**
 
-  - [ ] 12.3 Verify mock WebSocket usage
+  - [x] 12.3 Verify mock WebSocket usage
+
+
     - Review _add_house_players in FB.pm
     - Confirm FB::Login::WebSocket::Mock is used
     - Confirm send() does not transmit network data
@@ -291,13 +316,21 @@
     - **Property 17: Mock WebSocket Interface**
     - **Validates: Requirements 9.2, 9.3**
 
-  - [ ] 12.5 Verify house player chip limits
+  - [x] 12.5 Verify house player chip limits
+
+
     - Confirm house players can have 1000000 chips
     - Review add_house_players.pl chip allocation
     - _Requirements: 9.4_
 
-- [ ] 13. Implement disconnection handling for mobile players
-  - [ ] 13.1 Create Session Manager component
+- [x] 13. Implement disconnection handling for mobile players
+
+
+
+
+  - [x] 13.1 Create Session Manager component
+
+
     - Create `lib/FB/Session/Manager.pm`
     - Implement disconnected_sessions hash to track disconnected players
     - Implement grace_timers hash for timeout management
@@ -306,7 +339,9 @@
     - Implement grace_expired() to clean up and fold player
     - _Requirements: 10.1, 10.2, 10.4_
 
-  - [ ] 13.2 Add auto-action settings to Chair
+  - [x] 13.2 Add auto-action settings to Chair
+
+
     - Add auto_action attribute to FB::Poker::Chair (fold, check_fold, call_N)
     - Add auto_call_limit attribute for call_N mode
     - Add disconnected boolean flag
@@ -317,7 +352,9 @@
     - **Property 19: Auto-Action Correctness**
     - **Validates: Requirements 10.3, 11.1, 11.2, 11.3**
 
-  - [ ] 13.4 Integrate Session Manager with WebSocket handling
+  - [x] 13.4 Integrate Session Manager with WebSocket handling
+
+
     - Hook on_disconnect into WebSocket close event in Ships::Websocket
     - Hook on_reconnect into connection establishment
     - Pass session manager reference to FB.pm
@@ -327,7 +364,9 @@
     - **Property 18: Grace Period Session Preservation**
     - **Validates: Requirements 10.1, 10.2**
 
-  - [ ] 13.6 Integrate auto-action with table action cycle
+  - [x] 13.6 Integrate auto-action with table action cycle
+
+
     - Modify action_done() to check for disconnected player
     - Call apply_auto_action() when disconnected player's turn
     - Send notification of auto-action to player on reconnect
@@ -337,11 +376,18 @@
     - **Property 20: Grace Period Expiration**
     - **Validates: Requirements 10.4**
 
-  - [ ] 13.8 Add player commands for auto-action preferences
+  - [x] 13.8 Add player commands for auto-action preferences
+
+
     - Add set_auto_action command to poker_command
     - Validate auto_action values (fold, check_fold, call_N)
     - Store preference in chair when seated
     - _Requirements: 11.1, 11.2, 11.3_
 
-- [ ] 14. Final Checkpoint - Ensure all tests pass
+- [x] 14. Final Checkpoint - Ensure all tests pass
+
+
+
+
+
   - Ensure all tests pass, ask the user if questions arise.

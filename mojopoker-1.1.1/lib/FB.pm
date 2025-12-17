@@ -22,6 +22,7 @@ use FB::Poker::Strategy::Manager;
 use FB::Poker::Strategy::Evaluator::Holdem;
 use FB::Poker::Strategy::Evaluator::Omaha;
 use FB::Poker::Strategy::Evaluator::Draw;
+use FB::Session::Manager;
 use Time::Piece;
 use Time::Seconds;
 use MIME::Base64;
@@ -122,6 +123,18 @@ sub _build_strategy_manager {
     $manager->register_evaluator('draw', FB::Poker::Strategy::Evaluator::Draw->new);
     
     return $manager;
+}
+
+# Requirements: 10.1, 10.2
+has 'session_manager' => (
+    is      => 'rw',
+    isa     => sub { die "Not a FB::Session::Manager" unless $_[0]->isa('FB::Session::Manager') },
+    builder => '_build_session_manager',
+);
+
+sub _build_session_manager {
+    my $self = shift;
+    return FB::Session::Manager->new(fb => $self);
 }
 
 has 'login_list' => (
@@ -737,6 +750,11 @@ sub _login {
     #$login->user(FB::User->new(%$user_opts));
     #$self->user_map->{ $login->user->id } = $login->id;
 
+    # Requirements: 10.1, 10.2 - Check for reconnection within grace period
+    if ($self->session_manager->is_disconnected($login->id)) {
+        $self->session_manager->on_reconnect($login);
+    }
+
     # logout any old connections
     my $old_login_id = $self->user_map->{ $login->user->id };
     my $old_login = $self->login_list->{$old_login_id} if $old_login_id;
@@ -886,6 +904,17 @@ sub logout_user {
 
 sub _cleanup {
     my ( $self, $login ) = @_;
+
+    # Requirements: 10.1, 10.2 - Handle disconnection with grace period
+    # Try to save session for reconnection
+    my $session_saved = $self->session_manager->on_disconnect($login);
+    
+    # If session was saved, don't do full cleanup yet
+    if ($session_saved) {
+        # Only remove from login_list, keep everything else for reconnection
+        delete $self->login_list->{ $login->id };
+        return;
+    }
 
     # poker cleanup
     $self->_poker_cleanup($login);

@@ -163,6 +163,9 @@ sub _build_poker_command {
         'draw'  => [ \&draw,  { table_id => 1, card_idx => 1, tour_id => 0 }, 2 ],
         'discard' =>
           [ \&discard, { table_id => 1, card_idx => 1, tour_id => 0 }, 2 ],
+        
+        # Requirements: 11.1, 11.2, 11.3 - Set auto-action preferences
+        'set_auto_action' => [ \&set_auto_action, { table_id => 1, auto_action => 1, auto_call_limit => 0 }, 2 ],
 
       # tournaments
       #'create_tour' => [
@@ -223,6 +226,10 @@ sub _build_poker_option {
             }
             return 1;
         },
+        
+        # Requirements: 11.1, 11.2, 11.3 - Validate auto-action values
+        auto_action => qr/^(fold|check_fold|call_\d+)$/,
+        auto_call_limit => qr/^\d{1,10}$/,
     );
 
 =pod
@@ -974,6 +981,88 @@ sub draw {
     else {
         $login->send($response);
     }
+}
+
+# Requirements: 11.1, 11.2, 11.3 - Set auto-action preferences
+sub set_auto_action {
+    my ( $self, $login, $opts ) = @_;
+    my $response = ['set_auto_action_res'];
+    
+    # Validate that user is logged in
+    unless ( $login->has_user ) {
+        $response->[1] = { 
+            success => 0, 
+            message => 'Must be logged in to set auto-action preferences' 
+        };
+        $login->send($response);
+        return;
+    }
+    
+    # Get the table
+    my $table = $self->table_list->{ $opts->{table_id} };
+    unless ($table) {
+        $response->[1] = { 
+            success => 0, 
+            message => 'Table not found',
+            table_id => $opts->{table_id}
+        };
+        $login->send($response);
+        return;
+    }
+    
+    # Find the player's chair at this table
+    my $chair;
+    for my $c ( @{ $table->chairs } ) {
+        if ( $c->has_player && 
+             $c->player->has_login && 
+             $c->player->login->id eq $login->id ) {
+            $chair = $c;
+            last;
+        }
+    }
+    
+    unless ($chair) {
+        $response->[1] = { 
+            success => 0, 
+            message => 'You are not seated at this table',
+            table_id => $opts->{table_id}
+        };
+        $login->send($response);
+        return;
+    }
+    
+    # Validate auto_action value (fold, check_fold, call_N)
+    my $auto_action = $opts->{auto_action};
+    unless ( $auto_action =~ /^(fold|check_fold|call_\d+)$/ ) {
+        $response->[1] = { 
+            success => 0, 
+            message => 'Invalid auto_action value. Must be fold, check_fold, or call_N',
+            auto_action => $auto_action
+        };
+        $login->send($response);
+        return;
+    }
+    
+    # Set the auto-action preference
+    $chair->auto_action($auto_action);
+    
+    # If it's a call_N action, extract and set the limit
+    if ( $auto_action =~ /^call_(\d+)$/ ) {
+        $chair->auto_call_limit($1);
+    } elsif ( exists $opts->{auto_call_limit} ) {
+        $chair->auto_call_limit($opts->{auto_call_limit});
+    }
+    
+    $response->[1] = {
+        success => 1,
+        table_id => $opts->{table_id},
+        chair => $chair->index,
+        auto_action => $chair->auto_action,
+        auto_call_limit => $chair->auto_call_limit,
+        message => 'Auto-action preference updated'
+    };
+    
+    $login->send($response);
 }
 
 # tournaments

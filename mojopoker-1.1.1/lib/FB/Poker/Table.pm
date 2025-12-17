@@ -453,6 +453,23 @@ sub action_done {
     $self->action_done;
   }
   
+  # Requirements: 10.3, 11.4 - Handle disconnected player's turn with auto-action
+  elsif ( $self->chairs->[ $self->action ]->disconnected ) {
+    my $chair = $self->chairs->[ $self->action ];
+    my $action_taken = $chair->apply_auto_action($self);
+    
+    # Record the auto-action for notification on reconnect
+    if ($chair->has_player && $chair->player->has_login) {
+      my $fb = $self->fb;
+      if ($fb && $fb->session_manager) {
+        $fb->session_manager->record_auto_action(
+          $chair->player->login->id,
+          { action => 'auto', timestamp => time }
+        );
+      }
+    }
+  }
+  
   # Requirement 4.1: Trigger house player auto-play when it's their turn
   elsif ( $self->_is_house_player( $self->action ) ) {
     $self->_house_player_action;
