@@ -410,6 +410,20 @@ sub _guest_login {
     my ( $self, $opts ) = @_;
     my $login = $self->_new_login($opts);
     return unless $login;
+    
+    # Create a guest user with starting chips immediately on connect
+    my $guest_opts = { chips => 400, invested => 400 };
+    my $user = $self->db->new_user($guest_opts);
+    
+    # Error handling - return undef if user creation failed
+    unless ($user) {
+        warn "Failed to create guest user: database error";
+        return;
+    }
+    
+    $login->user($user);
+    $self->user_map->{ $login->user->id } = $login->id;
+    
     $self->join_channel( $login, { channel => 'main' } );
 
     #$self->login_list->{ $login->id } = $login;
@@ -419,12 +433,35 @@ sub _guest_login {
 sub guest_login {
     my ( $self, $login ) = @_;
 
+    # Create a guest user with starting chips if not already logged in
+    unless ( $login->has_user ) {
+        my $guest_opts = { chips => 400, invested => 400 };
+        my $user = $self->db->new_user($guest_opts);
+        
+        # Error handling - send error response if user creation failed
+        unless ($user) {
+            warn "Failed to create guest user: database error";
+            $login->send(['guest_login', {
+                success => 0,
+                error => 'user_creation_failed',
+                message => 'Unable to create guest account. Please try again.'
+            }]);
+            return;
+        }
+        
+        $login->user($user);
+        $self->user_map->{ $login->user->id } = $login->id;
+    }
+
     $self->login_list->{ $login->id } = $login;
     $login->send(
         [
             'guest_login',
             {
+                success  => 1,
                 login_id => $login->id,
+                user_id  => $login->user->id,
+                chips    => $self->db->fetch_chips( $login->user->id ),
                 timer    => int( $self->prize_timer->remaining ),
             }
         ]
@@ -479,7 +516,20 @@ sub register {
     }
 
     # add user
-    $login->user( $self->db->new_user($opts) );
+    my $user = $self->db->new_user($opts);
+    
+    # Error handling - send error response if user creation failed
+    unless ($user) {
+        warn "Failed to create registered user: database error";
+        $response->[1] = {
+            success => 0,
+            message => 'Registration failed. Please try again.'
+        };
+        $login->send($response);
+        return;
+    }
+    
+    $login->user($user);
     $self->user_map->{ $login->user->id } = $login->id;
 
     #$login->user->db( $self->db );
