@@ -88,12 +88,52 @@ The fix has been verified to:
 - Default timestamps are only set when not provided
 - Maintains backward compatibility for code that doesn't provide timestamps
 
-## Recommendation
-Review all other database methods to ensure they use parameterized queries. A quick audit shows:
-- ✓ `new_user` - Already uses parameterized queries + **FIXED** timestamp override bug
-- ✓ `fetch_user` - Already uses parameterized queries
-- ✓ `update_user` - Already uses parameterized queries
-- ✓ `fetch_chips` - Already uses parameterized queries
-- ✓ `credit_invested` - **FIXED** SQL injection vulnerability
+## Additional SQL Injection Fixes
 
-All database operations now use secure parameterized queries and respect user-provided values.
+After the initial audit, two more methods were found with SQL injection vulnerabilities:
+
+### `debit_chips` Method
+**Before (Vulnerable):**
+```perl
+my $sql = <<SQL;
+UPDATE $table_name 
+SET chips = chips - $chips 
+WHERE id = $user_id
+SQL
+$self->dbh->do($sql);
+```
+
+**After (Secure):**
+```perl
+my $sql = "UPDATE $table_name SET chips = chips - ? WHERE id = ?";
+$self->dbh->do($sql, undef, $chips, $user_id);
+```
+
+### `credit_chips` Method
+**Before (Vulnerable):**
+```perl
+my $sql = <<SQL;
+UPDATE $table_name 
+SET chips = chips + $chips 
+WHERE id = $user_id 
+SQL
+$self->dbh->do($sql);
+```
+
+**After (Secure):**
+```perl
+my $sql = "UPDATE $table_name SET chips = chips + ? WHERE id = ?";
+$self->dbh->do($sql, undef, $chips, $user_id);
+```
+
+## Complete Security Audit
+Review of all database methods confirms they now use parameterized queries:
+- ✓ `new_user` - Uses parameterized queries + **FIXED** timestamp override bug
+- ✓ `fetch_user` - Uses parameterized queries
+- ✓ `update_user` - Uses parameterized queries
+- ✓ `fetch_chips` - Uses parameterized queries
+- ✓ `credit_invested` - **FIXED** SQL injection vulnerability
+- ✓ `debit_chips` - **FIXED** SQL injection vulnerability
+- ✓ `credit_chips` - **FIXED** SQL injection vulnerability
+
+**All database operations now use secure parameterized queries and respect user-provided values.**

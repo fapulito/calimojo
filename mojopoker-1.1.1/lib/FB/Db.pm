@@ -550,14 +550,10 @@ SQL
 sub debit_chips {
     my ( $self, $user_id, $chips ) = @_;
     my $table_name = $self->_get_table_name('users');
-    my $sql = <<SQL;
-UPDATE $table_name 
-SET chips = chips - $chips 
-WHERE id = $user_id
-SQL
+    my $sql = "UPDATE $table_name SET chips = chips - ? WHERE id = ?";
     
     my $result = eval {
-        $self->dbh->do($sql);
+        $self->dbh->do($sql, undef, $chips, $user_id);
     };
     
     if ($@ || $self->dbh->err) {
@@ -565,6 +561,7 @@ SQL
             "Failed to debit chips",
             {
                 sql => $sql,
+                bind_params => [$chips, $user_id],
                 error => $@ || $self->dbh->errstr,
                 user_id => $user_id,
                 chips => $chips,
@@ -579,14 +576,10 @@ SQL
 sub credit_chips {
     my ( $self, $user_id, $chips ) = @_;
     my $table_name = $self->_get_table_name('users');
-    my $sql = <<SQL;
-UPDATE $table_name 
-SET chips = chips + $chips 
-WHERE id = $user_id 
-SQL
+    my $sql = "UPDATE $table_name SET chips = chips + ? WHERE id = ?";
     
     my $result = eval {
-        $self->dbh->do($sql);
+        $self->dbh->do($sql, undef, $chips, $user_id);
     };
     
     if ($@ || $self->dbh->err) {
@@ -594,6 +587,7 @@ SQL
             "Failed to credit chips",
             {
                 sql => $sql,
+                bind_params => [$chips, $user_id],
                 error => $@ || $self->dbh->errstr,
                 user_id => $user_id,
                 chips => $chips,
