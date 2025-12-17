@@ -20,27 +20,20 @@ has 'dbh' => (
 );
 
 sub _build_dbh {
-    # Support both SQLite (local dev) and PostgreSQL (NeonDB production)
-    my $db_host = $ENV{DB_HOST};
+    # NeonDB PostgreSQL connection - requires env vars
+    my $db_host = $ENV{DB_HOST} or die "DB_HOST environment variable required";
+    my $db_user = $ENV{DB_USER} or die "DB_USER environment variable required";
+    my $db_pass = $ENV{DB_PASSWORD} or die "DB_PASSWORD environment variable required";
+    my $db_port = $ENV{DB_PORT} || 5432;
+    my $db_name = $ENV{DB_NAME} || 'neondb';
+    my $sslmode = $ENV{DB_SSLMODE} || 'require';
     
-    if ($db_host) {
-        # PostgreSQL/NeonDB connection
-        my $db_port = $ENV{DB_PORT} || 5432;
-        my $db_name = $ENV{DB_NAME} || 'neondb';
-        my $db_user = $ENV{DB_USER} || '';
-        my $db_pass = $ENV{DB_PASSWORD} || '';
-        my $sslmode = $ENV{DB_SSLMODE} || 'require';
-        
-        return DBI->connect(
-            "dbi:Pg:dbname=$db_name;host=$db_host;port=$db_port;sslmode=$sslmode",
-            $db_user,
-            $db_pass,
-            { RaiseError => 1, AutoCommit => 1, pg_enable_utf8 => 1 }
-        );
-    } else {
-        # SQLite fallback for local development
-        return DBI->connect( "dbi:SQLite:dbname=./db/fb.db", "", "" );
-    }
+    return DBI->connect(
+        "dbi:Pg:dbname=$db_name;host=$db_host;port=$db_port;sslmode=$sslmode",
+        $db_user,
+        $db_pass,
+        { RaiseError => 1, AutoCommit => 1, pg_enable_utf8 => 1 }
+    );
 }
 
 has 'sql' => (
@@ -147,6 +140,7 @@ SQL
   my $sth = $self->dbh->prepare($sql);
   $sth->execute( $user_id );
   my $chips = $sth->fetchrow_array || 0;
+  warn "DEBUG fetch_chips: user_id=$user_id chips=$chips driver=" . $self->dbh->{Driver}{Name};
   return $chips;
 }
 
