@@ -1,7 +1,26 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
-use lib './lib';
+use FindBin qw($RealBin);
+use lib "$RealBin/lib";
+
+# Load .env file - check current dir, script dir, and parent dir
+for my $env_path ('.env', "$RealBin/.env", "$RealBin/../.env") {
+    if (-f $env_path && open my $fh, '<', $env_path) {
+        while (<$fh>) {
+            chomp;
+            next if /^\s*#/ || /^\s*$/;
+            if (/^([^=]+)=(.*)$/) {
+                my ($key, $value) = ($1, $2);
+                $value =~ s/^["']|["']$//g;
+                $ENV{$key} = $value unless exists $ENV{$key};
+            }
+        }
+        close $fh;
+        last;
+    }
+}
+
 use FB::Db;
 
 print "Testing NeonDB connection...\n";
