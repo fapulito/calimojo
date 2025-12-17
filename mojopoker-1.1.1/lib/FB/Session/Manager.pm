@@ -38,8 +38,8 @@ sub on_disconnect {
     my $chair_index;
     my $chair;
     
-    for my $tid (keys %{ $self->fb->tables }) {
-        my $table = $self->fb->tables->{$tid};
+    for my $tid (keys %{ $self->fb->table_list }) {
+        my $table = $self->fb->table_list->{$tid};
         for my $i (0 .. $#{ $table->chairs }) {
             my $c = $table->chairs->[$i];
             if ($c->has_player && $c->player->has_login && $c->player->login->id eq $login_id) {
@@ -102,7 +102,7 @@ sub on_reconnect {
     }
     
     # Restore session
-    my $table = $self->fb->tables->{ $session->{table_id} };
+    my $table = $self->fb->table_list->{ $session->{table_id} };
     if ($table) {
         my $chair = $table->chairs->[ $session->{chair_index} ];
         
@@ -115,7 +115,7 @@ sub on_reconnect {
         }
         
         # Add login back to watch list
-        $self->fb->login_watch->{$login_id} = $session->{table_id};
+        $self->fb->login_watch->{$login_id} = $login if defined $login;
         
         # Send table snapshot to reconnected player
         $self->fb->_send_table_summary($login, $table);
@@ -143,7 +143,7 @@ sub grace_expired {
     my $session = $self->disconnected_sessions->{$login_id};
     return unless $session;
     
-    my $table = $self->fb->tables->{ $session->{table_id} };
+    my $table = $self->fb->table_list->{ $session->{table_id} };
     if ($table) {
         my $chair = $table->chairs->[ $session->{chair_index} ];
         
