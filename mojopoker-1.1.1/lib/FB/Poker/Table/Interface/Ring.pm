@@ -103,7 +103,8 @@ around 'join' => sub {
     return $r;
   }
 
-  my $balance = $self->db->fetch_chips( $login->user->id ) || 0;
+  my $user_id = $login->user->id;
+  my $balance = $self->db->fetch_chips( $user_id ) || 0;
   #my $balance = $login->user->fetch_chips || 0;
   my $debit = $opts->{chips};
   

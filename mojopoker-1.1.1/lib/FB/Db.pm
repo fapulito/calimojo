@@ -140,7 +140,6 @@ SQL
   my $sth = $self->dbh->prepare($sql);
   $sth->execute( $user_id );
   my $chips = $sth->fetchrow_array || 0;
-  warn "DEBUG fetch_chips: user_id=$user_id chips=$chips driver=" . $self->dbh->{Driver}{Name};
   return $chips;
 }
 
