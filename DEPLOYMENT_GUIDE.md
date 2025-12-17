@@ -75,7 +75,8 @@ apt update && apt upgrade -y
 apt install -y perl cpanminus libdbi-perl libdbd-pg-perl \
     libmojolicious-perl libio-socket-ssl-perl \
     libsql-abstract-perl libdigest-sha-perl \
-    build-essential libssl-dev nginx certbot python3-certbot-nginx
+    build-essential libssl-dev libpq-dev \
+    nginx certbot python3-certbot-nginx
 
 # Install additional Perl modules
 cpanm Moo
