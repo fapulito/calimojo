@@ -272,13 +272,22 @@
   - Ensure all tests pass, ask the user if questions arise.
 
 
-- [ ] 11. Update Fly.io deployment configuration
-  - [ ] 11.1 Update fly.toml with new environment variables
+- [x] 11. Update Fly.io deployment configuration
+
+
+
+
+
+
+  - [x] 11.1 Update fly.toml with new environment variables
+
     - Add placeholders for SENTRY_DSN, GA4_MEASUREMENT_ID, FB_PIXEL_ID
     - Update health check to use /health endpoint
     - _Requirements: 6.1, 6.4_
+
   - [ ] 11.2 Update Dockerfile if needed
     - Ensure all new dependencies are installed
+
     - _Requirements: 6.1_
   - [ ] 11.3 Update FLY_IO_DEPLOYMENT.md documentation
     - Add section for observability configuration
@@ -297,5 +306,10 @@
   - Add any other required modules
   - _Requirements: 1.1, Testing infrastructure_
 
-- [ ] 13. Final Checkpoint - Ensure all tests pass
+- [x] 13. Final Checkpoint - Ensure all tests pass
+
+
+
+
+
   - Ensure all tests pass, ask the user if questions arise.
