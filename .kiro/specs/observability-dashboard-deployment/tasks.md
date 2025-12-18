@@ -223,21 +223,40 @@
     - **Property 10: Secure Cookie Flags**
     - **Validates: Requirements 5.5**
 
-- [-] 9. Update templates for tracking scripts
+
+- [x] 9. Update templates for tracking scripts
 
 
-  - [ ] 9.1 Update main.html.ep with GA4 script
+
+
+
+  - [x] 9.1 Update main.html.ep with GA4 script
+
     - Add conditional GA4 gtag.js script
     - Pass measurement ID from controller
     - _Requirements: 2.1, 2.2_
+
   - [ ] 9.2 Update main.html.ep with Facebook Pixel script
     - Add conditional FB Pixel script
     - Pass pixel ID from controller
+
+
     - _Requirements: 3.1, 3.2_
-  - [ ] 9.3 Create admin dashboard template
+  - [x] 9.3 Create admin dashboard template
+
+
     - Create templates/admin/dashboard.html.ep
+
+
+
+
     - Display system metrics, gaming metrics, table list
+
+
+
+
     - _Requirements: 4.1, 4.3, 4.6_
+
   - [ ] 9.4 Create admin logs template
     - Create templates/admin/logs.html.ep
     - Display log entries with filtering
