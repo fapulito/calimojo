@@ -85,28 +85,38 @@
   - Ensure all tests pass, ask the user if questions arise.
 
 
-- [ ] 4. Implement FB::Security module
+- [x] 4. Implement FB::Security module
 
-  - [ ] 4.1 Implement security headers
+
+
+
+
+  - [x] 4.1 Implement security headers
+
     - Create get_security_headers method returning headers hash
     - Include X-Frame-Options, X-Content-Type-Options, X-XSS-Protection, CSP
     - _Requirements: 5.1_
   - [ ]* 4.2 Write property test for security headers presence
     - **Property 8: Security Headers Presence**
     - **Validates: Requirements 5.1**
-  - [ ] 4.3 Implement rate limiting
+
+  - [x] 4.3 Implement rate limiting
+
     - Implement check_rate_limit method with IP tracking
     - Track request counts per IP with timestamps
     - Return 0 when limit exceeded, 1 when allowed
     - _Requirements: 5.2, 5.3_
-  - [ ] 4.4 Implement CSRF token generation and validation
+
+
+  - [x] 4.4 Implement CSRF token generation and validation
     - Implement generate_csrf_token using secure random
     - Implement validate_csrf_token with timing-safe comparison
     - _Requirements: 5.4_
   - [ ]* 4.5 Write property test for CSRF token validation
     - **Property 9: CSRF Token Validation**
     - **Validates: Requirements 5.4**
-  - [ ] 4.6 Implement attack pattern detection
+  - [x] 4.6 Implement attack pattern detection
+
     - Create detect_attack_patterns method
     - Check for SQL injection patterns (UNION, SELECT, DROP, etc.)
     - Check for XSS patterns (<script>, javascript:, onerror, etc.)
@@ -114,6 +124,7 @@
   - [ ]* 4.7 Write property test for attack pattern detection
     - **Property 11: Attack Pattern Detection**
     - **Validates: Requirements 5.6**
+
 
 - [ ] 5. Checkpoint - Ensure all tests pass
 
