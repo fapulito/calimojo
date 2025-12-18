@@ -286,7 +286,12 @@
     - Add dashboard access instructions
     - _Requirements: 6.1, 6.2, 6.3_
 
-- [ ] 12. Update cpanfile with new dependencies
+- [x] 12. Update cpanfile with new dependencies
+
+
+
+
+
   - Add Sentry::SDK or equivalent Perl Sentry client
   - Add Test::LectroTest for property testing
   - Add any other required modules
