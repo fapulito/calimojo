@@ -137,14 +137,18 @@
 - [-] 6. Implement Ships::Dashboard controller
 
 
-  - [ ] 6.1 Implement admin authentication middleware
+  - [x] 6.1 Implement admin authentication middleware
+
+
     - Create require_admin method checking user level
     - Return 401 for unauthenticated requests
     - _Requirements: 4.2_
   - [ ]* 6.2 Write property test for dashboard access control
     - **Property 5: Dashboard Access Control**
     - **Validates: Requirements 4.2**
-  - [ ] 6.3 Implement metrics collection
+
+  - [x] 6.3 Implement metrics collection
+
     - Collect system metrics (uptime, memory, CPU)
     - Collect gaming metrics (users, tables, chips, connections)
     - Collect per-table information
@@ -158,7 +162,9 @@
   - [ ]* 6.6 Write property test for dashboard metrics round-trip
     - **Property 6: Dashboard Metrics Round-Trip**
     - **Validates: Requirements 4.5**
-  - [ ] 6.7 Implement logs endpoint
+
+  - [x] 6.7 Implement logs endpoint
+
     - Query recent error logs from storage
     - Support severity filtering
     - Return JSON for API requests
@@ -172,6 +178,7 @@
   - [ ]* 6.10 Write property test for log entry round-trip
     - **Property 17: Log Entry Round-Trip**
     - **Validates: Requirements 8.4**
+
   - [ ] 6.11 Implement health check endpoint
     - Return 200 OK with basic status
     - Include database connectivity check
