@@ -134,7 +134,9 @@
   - Ensure all tests pass, ask the user if questions arise.
 
 
-- [-] 6. Implement Ships::Dashboard controller
+- [x] 6. Implement Ships::Dashboard controller
+
+
 
 
   - [x] 6.1 Implement admin authentication middleware
@@ -179,26 +181,39 @@
     - **Property 17: Log Entry Round-Trip**
     - **Validates: Requirements 8.4**
 
-  - [ ] 6.11 Implement health check endpoint
+  - [x] 6.11 Implement health check endpoint
+
     - Return 200 OK with basic status
     - Include database connectivity check
     - _Requirements: 6.4_
 
-- [ ] 7. Checkpoint - Ensure all tests pass
+
+- [x] 7. Checkpoint - Ensure all tests pass
+
+
+
 
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 8. Integrate modules into Ships.pm
+- [x] 8. Integrate modules into Ships.pm
 
-  - [ ] 8.1 Add observability initialization to startup
+
+
+
+
+  - [x] 8.1 Add observability initialization to startup
+
+
     - Create FB::Observability instance in Ships.pm
     - Initialize Sentry on application start
     - _Requirements: 1.2_
-  - [ ] 8.2 Add security middleware to routes
+  - [x] 8.2 Add security middleware to routes
+
     - Apply security headers to all responses
     - Add rate limiting check to route handler
     - _Requirements: 5.1, 5.2_
-  - [ ] 8.3 Add dashboard routes
+  - [x] 8.3 Add dashboard routes
+
     - Add /admin/dashboard route with auth middleware
     - Add /admin/metrics JSON endpoint
     - Add /admin/logs endpoint
@@ -208,7 +223,8 @@
     - **Property 10: Secure Cookie Flags**
     - **Validates: Requirements 5.5**
 
-- [ ] 9. Update templates for tracking scripts
+- [-] 9. Update templates for tracking scripts
+
 
   - [ ] 9.1 Update main.html.ep with GA4 script
     - Add conditional GA4 gtag.js script
