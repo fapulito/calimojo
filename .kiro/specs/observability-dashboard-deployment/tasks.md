@@ -255,9 +255,14 @@
 
 
 
+
+
     - _Requirements: 4.1, 4.3, 4.6_
 
-  - [ ] 9.4 Create admin logs template
+
+  - [x] 9.4 Create admin logs template
+
+
     - Create templates/admin/logs.html.ep
     - Display log entries with filtering
     - _Requirements: 8.1, 8.2, 8.3_

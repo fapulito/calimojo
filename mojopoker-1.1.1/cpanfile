@@ -13,6 +13,8 @@ requires 'MIME::Base64';
 requires 'SQL::Abstract';
 requires 'Tie::IxHash';
 requires 'Crypt::Eksblowfish';
+requires 'Try::Tiny';
+requires 'LWP::Simple';
 
 on 'test' => sub {
     requires 'Test::More', '>= 1.302';
