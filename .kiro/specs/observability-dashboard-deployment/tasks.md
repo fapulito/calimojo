@@ -126,11 +126,16 @@
     - **Validates: Requirements 5.6**
 
 
-- [ ] 5. Checkpoint - Ensure all tests pass
+- [x] 5. Checkpoint - Ensure all tests pass
+
+
+
 
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 6. Implement Ships::Dashboard controller
+
+- [-] 6. Implement Ships::Dashboard controller
+
 
   - [ ] 6.1 Implement admin authentication middleware
     - Create require_admin method checking user level
