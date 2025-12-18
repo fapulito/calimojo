@@ -148,6 +148,13 @@ flyctl secrets set \
 # Session secret (generate random string)
 flyctl secrets set \
   SESSION_SECRET=$(openssl rand -hex 32)
+
+# Observability configuration (optional but recommended)
+# See Part 14: Observability Configuration for details
+flyctl secrets set \
+  SENTRY_DSN=https://your-key@sentry.io/project-id \
+  GA4_MEASUREMENT_ID=G-XXXXXXXXXX \
+  FB_PIXEL_ID=1234567890
 ```
 
 ### 4.3 Deploy the Application
@@ -506,11 +513,17 @@ flyctl launch
 flyctl secrets set DB_HOST=... DB_PASSWORD=... FACEBOOK_APP_ID=...
 flyctl deploy
 
-# 4. Open app
+# 4. Configure observability (optional)
+flyctl secrets set SENTRY_DSN=... GA4_MEASUREMENT_ID=... FB_PIXEL_ID=...
+
+# 5. Open app
 flyctl open
 
-# 5. Monitor
+# 6. Monitor
 flyctl logs -f
+
+# 7. Access admin dashboard
+# https://your-app.fly.dev/admin/dashboard
 ```
 
 ---
@@ -524,6 +537,200 @@ flyctl logs -f
 
 ---
 
+## Part 14: Observability Configuration
+
+MojoPoker includes built-in observability features for error tracking, analytics, and monitoring. This section covers how to configure these features for your Fly.io deployment.
+
+### 14.1 Overview
+
+The observability stack includes:
+- **Sentry** - Error tracking and performance monitoring
+- **Google Analytics 4 (GA4)** - User behavior analytics
+- **Facebook Pixel** - Conversion tracking for marketing
+- **Admin Dashboard** - Real-time gaming metrics and system health
+
+### 14.2 Environment Variables
+
+All observability features are configured via environment variables. Set them as Fly.io secrets:
+
+| Variable | Description | Format | Required |
+|----------|-------------|--------|----------|
+| `SENTRY_DSN` | Sentry Data Source Name | `https://key@sentry.io/project` | No |
+| `GA4_MEASUREMENT_ID` | Google Analytics 4 ID | `G-XXXXXXXXXX` | No |
+| `FB_PIXEL_ID` | Facebook Pixel ID | Numeric string | No |
+
+```bash
+# Set Sentry DSN (get from sentry.io project settings)
+flyctl secrets set SENTRY_DSN=https://abc123@o123456.ingest.sentry.io/1234567
+
+# Set GA4 Measurement ID (get from Google Analytics admin)
+flyctl secrets set GA4_MEASUREMENT_ID=G-ABC123XYZ
+
+# Set Facebook Pixel ID (get from Facebook Events Manager)
+flyctl secrets set FB_PIXEL_ID=1234567890123456
+```
+
+**Note**: All observability features are optional. If an environment variable is not set, that feature is automatically disabled without affecting application functionality.
+
+### 14.3 Sentry Error Tracking
+
+Sentry captures uncaught exceptions and sends them to your Sentry project for analysis.
+
+**Setup:**
+1. Create a Sentry account at [sentry.io](https://sentry.io)
+2. Create a new project (select "Perl" or "Other")
+3. Copy the DSN from Project Settings → Client Keys
+4. Set the secret: `flyctl secrets set SENTRY_DSN=your-dsn`
+
+**Features:**
+- Automatic error capture with stack traces
+- User context (user_id, login_id) included in events
+- Request context (URL, method) for debugging
+- Environment tagging (production/development)
+
+**Verify:**
+```bash
+# Check logs for Sentry initialization
+flyctl logs | grep -i sentry
+# Should see: "Sentry integration initialized with DSN: ****1234"
+```
+
+### 14.4 Google Analytics 4
+
+GA4 tracks user behavior and engagement on your poker site.
+
+**Setup:**
+1. Create a GA4 property at [analytics.google.com](https://analytics.google.com)
+2. Get your Measurement ID (format: G-XXXXXXXXXX)
+3. Set the secret: `flyctl secrets set GA4_MEASUREMENT_ID=G-XXXXXXXXXX`
+
+**Tracked Events:**
+- Page views (automatic)
+- User login
+- Table joins
+- Bet placements
+- Hand wins
+
+**Verify:**
+- Open your site and check GA4 Real-Time reports
+- Events should appear within seconds
+
+### 14.5 Facebook Pixel
+
+Facebook Pixel tracks conversions for advertising optimization.
+
+**Setup:**
+1. Create a Pixel at [Facebook Events Manager](https://business.facebook.com/events_manager)
+2. Copy your Pixel ID (numeric string)
+3. Set the secret: `flyctl secrets set FB_PIXEL_ID=1234567890`
+
+**Tracked Events:**
+- PageView (automatic)
+- Registration (CompleteRegistration)
+- Chip purchases (Purchase)
+
+**Verify:**
+- Use Facebook Pixel Helper browser extension
+- Check Events Manager for incoming events
+
+### 14.6 Admin Dashboard
+
+The admin dashboard provides real-time monitoring of your poker application.
+
+**Access:**
+```
+https://your-app.fly.dev/admin/dashboard
+```
+
+**Authentication:**
+- Only users with admin privileges can access the dashboard
+- Admin status is determined by user level in the database
+
+**Dashboard Features:**
+
+| Section | Metrics |
+|---------|---------|
+| **System** | Uptime, memory usage, CPU, Perl/Mojo versions |
+| **Gaming** | Active users, active tables, chips in play, WebSocket connections |
+| **Tables** | Table ID, game type, player count, pot size for each active table |
+
+**API Endpoints:**
+```bash
+# JSON metrics endpoint
+curl https://your-app.fly.dev/admin/metrics
+
+# Health check endpoint (used by Fly.io)
+curl https://your-app.fly.dev/health
+
+# Logs endpoint
+curl https://your-app.fly.dev/admin/logs
+```
+
+### 14.7 Health Checks
+
+Fly.io uses the `/health` endpoint to verify application health:
+
+```toml
+# In fly.toml
+[[services.http_checks]]
+  interval = "30s"
+  timeout = "5s"
+  grace_period = "10s"
+  method = "get"
+  path = "/health"
+  protocol = "http"
+```
+
+The health endpoint returns:
+- `200 OK` with JSON status when healthy
+- `503 Service Unavailable` if database is unreachable
+
+**Test health check:**
+```bash
+curl -i https://your-app.fly.dev/health
+# HTTP/2 200
+# {"status":"ok","database":"connected","timestamp":"2025-12-17T10:30:00Z"}
+```
+
+### 14.8 Viewing Logs
+
+**Fly.io Logs:**
+```bash
+# Real-time logs
+flyctl logs -f
+
+# Filter by error level
+flyctl logs | grep -i error
+
+# Last 100 lines
+flyctl logs -n 100
+```
+
+**Admin Dashboard Logs:**
+- Navigate to `/admin/logs` for recent error entries
+- Filter by severity level (debug, info, warn, error, fatal)
+- View timestamp, message, and source location
+
+### 14.9 Security Considerations
+
+The observability features include security hardening:
+
+- **Security Headers**: X-Frame-Options, CSP, X-XSS-Protection applied to all responses
+- **Rate Limiting**: 100 requests/minute per IP to prevent abuse
+- **CSRF Protection**: Tokens required for form submissions
+- **Sensitive Data Masking**: DSNs and IDs are masked in logs (shows only last 4 characters)
+
+**Verify security headers:**
+```bash
+curl -I https://your-app.fly.dev/
+# X-Frame-Options: SAMEORIGIN
+# X-Content-Type-Options: nosniff
+# X-XSS-Protection: 1; mode=block
+# Content-Security-Policy: default-src 'self'; ...
+```
+
+---
+
 ## Next Steps
 
 1. ✅ Deploy to Fly.io
@@ -531,5 +738,7 @@ flyctl logs -f
 3. ✅ Set up GitHub Actions for CI/CD
 4. ✅ Update Vercel frontend to use Fly.io backend
 5. ✅ Monitor performance and scale as needed
+6. ✅ Configure observability (Sentry, GA4, Facebook Pixel)
+7. ✅ Access admin dashboard for real-time monitoring
 
-Your poker app is now running on a modern, scalable platform with full WebSocket support!
+Your poker app is now running on a modern, scalable platform with full WebSocket support and comprehensive observability!

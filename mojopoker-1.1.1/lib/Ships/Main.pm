@@ -13,9 +13,14 @@ sub default {
     $url->scheme('wss') if $self->req->headers->header('X-Forwarded-For');
     my $opts = 'ws: "' . $url->to_abs . '"';
 
+    # Requirements: 2.1, 2.2, 3.1, 3.2 - Get tracking config for GA4 and FB Pixel
+    my $tracking_config = $self->app->observability->get_tracking_config;
+
     $self->stash( 
        opts => $opts,
-       facebook_app_id => $self->app->facebook_app_id, 
+       facebook_app_id => $self->app->facebook_app_id,
+       ga4_measurement_id => $tracking_config->{ga4_measurement_id},
+       fb_pixel_id => $tracking_config->{fb_pixel_id},
     );
 
     $self->render(
@@ -119,9 +124,14 @@ sub book {
     $url->scheme('wss') if $self->req->headers->header('X-Forwarded-For');
     my $opts = 'ws: "' . $url->to_abs . '", bookmark: "' . $bookmark . '"';
 
+    # Requirements: 2.1, 2.2, 3.1, 3.2 - Get tracking config for GA4 and FB Pixel
+    my $tracking_config = $self->app->observability->get_tracking_config;
+
     $self->stash(
        opts => $opts,
        facebook_app_id => $self->app->facebook_app_id,
+       ga4_measurement_id => $tracking_config->{ga4_measurement_id},
+       fb_pixel_id => $tracking_config->{fb_pixel_id},
     );
 
     $self->render(
