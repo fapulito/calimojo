@@ -21,18 +21,28 @@
     - **Property 12: House Player Chip Balance**
     - **Validates: Requirements 7.2**
 
-- [ ] 2. Implement house player pool management
-  - [ ] 2.1 Add house_player_pool and house_player_seated attributes to FB.pm
+- [x] 2. Implement house player pool management
+
+
+
+
+
+  - [x] 2.1 Add house_player_pool and house_player_seated attributes to FB.pm
+
+
     - Add house_player_pool array to track all house player logins
     - Add house_player_seated hash to track which house players are at which tables
     - _Requirements: 7.4_
 
-  - [ ] 2.2 Implement _init_house_players method
+  - [x] 2.2 Implement _init_house_players method
+
+
     - Create mock WebSocket connections for all 7 house players at startup
     - Add them to the house_player_pool
     - _Requirements: 7.1, 9.2_
 
-  - [ ] 2.3 Implement _get_available_house_players method
+  - [x] 2.3 Implement _get_available_house_players method
+
     - Return house players not currently seated at any table
     - Accept count parameter to limit results
     - _Requirements: 7.4_
@@ -41,20 +51,29 @@
     - **Property 14: House Player Uniqueness**
     - **Validates: Requirements 7.4**
 
-- [ ] 3. Implement dynamic house player addition on join
-  - [ ] 3.1 Implement _add_house_players_on_join method
+- [x] 3. Implement dynamic house player addition on join
+
+
+
+
+
+  - [x] 3.1 Implement _add_house_players_on_join method
+
+
     - Count current players at table
     - Calculate how many house players needed to reach 7
     - Get available house players from pool
     - Schedule additions with slight delays
     - _Requirements: 2.1, 2.2_
 
-  - [ ] 3.2 Implement _get_distributed_chairs method
+  - [x] 3.2 Implement _get_distributed_chairs method
+
     - Find empty chairs at table
     - Distribute house players across chairs evenly
     - _Requirements: 2.3_
 
-  - [ ] 3.3 Modify join_ring to trigger house player addition
+  - [x] 3.3 Modify join_ring to trigger house player addition
+
     - Call _add_house_players_on_join after successful human join
     - _Requirements: 2.1_
 

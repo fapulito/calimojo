@@ -441,6 +441,13 @@ sub join_ring {
     }
     $login->send($response);
 
+    # Requirements: 2.1 - Add house players when a human player joins
+    # Only trigger for non-house players (human players)
+    my $is_house_player = ($login->id =~ /^house_?\d+/);
+    unless ($is_house_player) {
+        $self->_add_house_players_on_join($table, $login);
+    }
+
     # auto start
     if (   $table->game_over
         && $table->auto_start
