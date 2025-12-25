@@ -1,7 +1,14 @@
 # Implementation Plan
 
-- [ ] 1. Expand house player accounts
-  - [ ] 1.1 Update add_house_players.pl to create 7 house players
+- [x] 1. Expand house player accounts
+
+
+
+
+
+  - [x] 1.1 Update add_house_players.pl to create 7 house players
+
+
     - Modify the script to create HousePlayer1 through HousePlayer7
     - Each account gets 1000000 chips
     - _Requirements: 7.1, 7.2, 7.3_

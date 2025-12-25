@@ -28,13 +28,16 @@ my $dbh = $db->dbh;
 
 print "Adding house players...\n";
 
-for my $player ('HousePlayer1', 'HousePlayer2') {
-    my $bookmark = lc($player);
-    $bookmark =~ s/player//;
+# Create 7 house players (HousePlayer1 through HousePlayer7)
+# Requirements 7.1, 7.2, 7.3: Ensure at least 7 house player accounts exist,
+# each with 1000000 chips, following the naming pattern HousePlayer followed by a number
+for my $i (1..7) {
+    my $player = "HousePlayer$i";
+    my $bookmark = "house$i";
     
     my $sth = $dbh->prepare("INSERT INTO users (username, chips, bookmark) VALUES (?, 1000000, ?) ON CONFLICT (username) DO UPDATE SET chips = 1000000");
     $sth->execute($player, $bookmark);
-    print "Added/updated: $player\n";
+    print "Added/updated: $player (chips: 1000000)\n";
 }
 
 print "\nCurrent users:\n";
