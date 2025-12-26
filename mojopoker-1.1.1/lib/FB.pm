@@ -1108,6 +1108,9 @@ sub BUILD {
         })
     );
 
+    # Requirements: 7.1, 10.1 - Initialize house player pool before creating test tables
+    $self->_init_house_players();
+
     # Create test tables with house players on startup
     $self->_create_test_tables();
 }
@@ -1115,8 +1118,8 @@ sub BUILD {
 sub _create_test_tables {
     my $self = shift;
 
-    # Initialize house player pool first
-    $self->_init_house_players();
+    # Note: _init_house_players is called in BUILD before this method
+    # House player pool is already initialized
 
     # Create a Texas Hold'em table
     my $table_opts = {
@@ -1152,6 +1155,33 @@ sub _create_test_tables {
         limit => 'PL',
         small_blind => 1,
         big_blind => 2,
+        auto_start => 1,
+        db => $self->db,
+        fb => $self,
+    };
+
+    $table = $self->table_maker->ring_table($table_opts);
+    if ($table) {
+        $self->table_list->{ $table->table_id } = $table;
+        $self->table_count($self->table_count + 1);
+
+        # Add house players to the table
+        $self->_add_house_players($table);
+
+        $self->_notify_lobby(
+            [ 'notify_create_ring', $self->_fetch_table_opts($table) ]
+        );
+    }
+
+    # Create a 7-Card Stud table
+    # Requirements: 1.1, 1.2, 1.3 - Always available stud game with 8 chairs and pot-limit betting
+    $table_opts = {
+        table_id => $self->table_count + 1,
+        chair_count => 8,           # Requirement 1.2: 8 chairs for stud
+        game_class => 'sevenstud',  # 7-card stud variant
+        limit => 'PL',              # Requirement 1.1: pot-limit betting
+        ante => 1,                  # Ante for stud games
+        bring => 2,                 # Bring-in bet for stud games
         auto_start => 1,
         db => $self->db,
         fb => $self,
@@ -1317,55 +1347,41 @@ sub _get_distributed_chairs {
     return @selected;
 }
 
+# Requirements: 7.4, 10.2 - Add house players to a table using the pool
+# Uses _get_available_house_players instead of fetching from DB
+# Tracks seated house players in house_player_seated
 sub _add_house_players {
-    my ($self, $table) = @_;
-
-    # Get house players from database
-    my $house_player1 = $self->db->fetch_user({username => 'HousePlayer1'});
-    my $house_player2 = $self->db->fetch_user({username => 'HousePlayer2'});
-
-    if ($house_player1) {
-        # Create proper mock WebSocket object for house player
-        my $mock_ws = FB::Login::WebSocket::Mock->new(
-            remote_address => '127.0.0.1'
-        );
-
-        # Create house login with mock WebSocket
-        my $house_login1 = FB::Login::WebSocket->new({
-            id => 'house1_' . $table->table_id,
-            websocket => $mock_ws,
-            db => $self->db,
-        });
-        $house_login1->user($house_player1);
-        $self->login_list->{$house_login1->id} = $house_login1;
-
+    my ($self, $table, $count) = @_;
+    $count //= 2;  # Default to 2 house players for initial table setup
+    
+    return unless $table;
+    
+    # Get available house players from pool (Requirement 7.4)
+    my @house_players = $self->_get_available_house_players($count);
+    
+    return unless @house_players;
+    
+    # Initialize seated tracking for this table if needed
+    $self->house_player_seated->{$table->table_id} //= [];
+    
+    # Get distributed chairs for house players
+    my @chairs = $self->_get_distributed_chairs($table, scalar @house_players);
+    
+    # Add each house player to the table
+    for my $i (0..$#house_players) {
+        my $hp = $house_players[$i];
+        my $chair_idx = $chairs[$i] // $i;  # Fallback to sequential if distribution fails
+        
         # Join the table with chips
-        $table->join($house_login1, {
-            chair => 0,
+        my $result = $table->join($hp, {
+            chair => $chair_idx,
             chips => 200,
         });
-    }
-
-    if ($house_player2) {
-        # Create proper mock WebSocket object for house player
-        my $mock_ws = FB::Login::WebSocket::Mock->new(
-            remote_address => '127.0.0.1'
-        );
-
-        # Create house login with mock WebSocket
-        my $house_login2 = FB::Login::WebSocket->new({
-            id => 'house2_' . $table->table_id,
-            websocket => $mock_ws,
-            db => $self->db,
-        });
-        $house_login2->user($house_player2);
-        $self->login_list->{$house_login2->id} = $house_login2;
-
-        # Join the table with chips
-        $table->join($house_login2, {
-            chair => 1,
-            chips => 200,
-        });
+        
+        # Track seated house player (Requirement 7.4)
+        if ($result && $result->{success}) {
+            push @{$self->house_player_seated->{$table->table_id}}, $hp->id;
+        }
     }
 }
 

@@ -164,6 +164,7 @@
 
 
 
+
   - [x] 8.1 Update Strategy::Config defaults
 
 
@@ -189,7 +190,13 @@
     - **Property 8: Medium Hand Call Rate**
     - **Validates: Requirements 4.4**
 
-- [ ] 9. Add 7-card stud table to demo games
+
+- [x] 9. Add 7-card stud table to demo games
+
+
+
+
+
 
   - [ ] 9.1 Update _create_test_tables to include sevenstud
     - Add sevenstud configuration with 8 chairs
@@ -205,20 +212,33 @@
     - **Property 11: Demo Game Creation**
     - **Validates: Requirements 6.2**
 
-- [ ] 10. Update BUILD method to initialize house players
+- [x] 10. Update BUILD method to initialize house players
 
-  - [ ] 10.1 Call _init_house_players in BUILD
+
+
+
+
+
+  - [x] 10.1 Call _init_house_players in BUILD
+
     - Initialize house player pool before creating test tables
     - _Requirements: 7.1_
 
-  - [ ] 10.2 Update _add_house_players to use pool
+  - [x] 10.2 Update _add_house_players to use pool
+
     - Use _get_available_house_players instead of fetching from DB
     - Track seated house players in house_player_seated
     - _Requirements: 7.4_
 
-- [ ] 11. Add documentation for creating demo games
 
-  - [ ] 11.1 Update README.md with demo game instructions
+- [x] 11. Add documentation for creating demo games
+
+
+
+
+
+  - [x] 11.1 Update README.md with demo game instructions
+
     - Document how to modify _create_test_tables
     - Document available game classes
     - Document mpadmin.pl usage
