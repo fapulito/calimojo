@@ -23,6 +23,7 @@ use FB::Poker::Strategy::Evaluator::Holdem;
 use FB::Poker::Strategy::Evaluator::Omaha;
 use FB::Poker::Strategy::Evaluator::OmahaHiLo;
 use FB::Poker::Strategy::Evaluator::Draw;
+use FB::Poker::Strategy::Evaluator::Stud;
 use FB::Session::Manager;
 use Time::Piece;
 use Time::Seconds;
@@ -122,6 +123,14 @@ sub _build_strategy_manager {
     $manager->register_evaluator('omaha', FB::Poker::Strategy::Evaluator::Omaha->new);
     $manager->register_evaluator('omahahilo', FB::Poker::Strategy::Evaluator::OmahaHiLo->new);
     $manager->register_evaluator('draw', FB::Poker::Strategy::Evaluator::Draw->new);
+    
+    # Register Stud evaluator for 7-card stud variants
+    # Requirements: 5.1, 5.4 - Use stud-specific hand evaluator for stud games
+    my $stud_evaluator = FB::Poker::Strategy::Evaluator::Stud->new;
+    $manager->register_evaluator('sevenstud', $stud_evaluator);
+    $manager->register_evaluator('sevenstudhilo', $stud_evaluator);
+    $manager->register_evaluator('sevenstudjokers', $stud_evaluator);
+    $manager->register_evaluator('razz', $stud_evaluator);
     
     return $manager;
 }

@@ -92,18 +92,29 @@
 - [ ] 4. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 5. Implement house player action timer
-  - [ ] 5.1 Add house_action_timer attribute to Table.pm
+- [x] 5. Implement house player action timer
+
+
+
+
+
+  - [x] 5.1 Add house_action_timer attribute to Table.pm
+
+
     - Store timer reference for house player actions
     - _Requirements: 3.1, 3.2_
 
-  - [ ] 5.2 Modify _house_player_action to use timer
+  - [x] 5.2 Modify _house_player_action to use timer
+
+
     - Clear any existing timer
     - Set 0.5 second timer to execute action
     - Ensures action completes well before clock expires
     - _Requirements: 3.1, 3.2, 3.3_
 
-  - [ ] 5.3 Implement _execute_house_action with fallback
+  - [x] 5.3 Implement _execute_house_action with fallback
+
+
     - Get decision from strategy manager
     - If decision fails, default to check if legal, otherwise fold
     - Execute the action and call action_done
@@ -117,14 +128,23 @@
     - **Property 6: House Player Action Fallback**
     - **Validates: Requirements 3.4**
 
-- [ ] 6. Implement Stud hand evaluator
-  - [ ] 6.1 Create FB::Poker::Strategy::Evaluator::Stud module
+- [x] 6. Implement Stud hand evaluator
+
+
+
+
+
+  - [x] 6.1 Create FB::Poker::Strategy::Evaluator::Stud module
+
+
     - Implement evaluate_hand method for 7-card stud
     - Generate all 21 combinations of 5 from 7 cards
     - Return best hand strength normalized to 0.0-1.0
     - _Requirements: 5.1, 5.2_
 
-  - [ ] 6.2 Register Stud evaluator in Strategy Manager
+  - [x] 6.2 Register Stud evaluator in Strategy Manager
+
+
     - Add sevenstud, sevenstudhilo, sevenstudjokers, razz mappings
     - _Requirements: 5.1, 5.4_
 
@@ -139,15 +159,23 @@
 - [ ] 7. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 8. Update strategy configuration for more aggressive play
-  - [ ] 8.1 Update Strategy::Config defaults
+
+- [x] 8. Update strategy configuration for more aggressive play
+
+
+
+  - [x] 8.1 Update Strategy::Config defaults
+
+
     - Set aggression to 7 (from 5)
     - Set tightness to 4 (from 5)
     - Add call_threshold at 0.25
     - Add bet_raise_frequency at 0.40
     - _Requirements: 4.1, 4.2_
 
-  - [ ] 8.2 Update ActionDecider to use new thresholds
+  - [x] 8.2 Update ActionDecider to use new thresholds
+
+
     - Use call_threshold for medium hand decisions
     - Use bet_raise_frequency to increase betting
     - Reduce fold rate for medium-strength hands
@@ -162,6 +190,7 @@
     - **Validates: Requirements 4.4**
 
 - [ ] 9. Add 7-card stud table to demo games
+
   - [ ] 9.1 Update _create_test_tables to include sevenstud
     - Add sevenstud configuration with 8 chairs
     - Set pot-limit betting
@@ -177,6 +206,7 @@
     - **Validates: Requirements 6.2**
 
 - [ ] 10. Update BUILD method to initialize house players
+
   - [ ] 10.1 Call _init_house_players in BUILD
     - Initialize house player pool before creating test tables
     - _Requirements: 7.1_
@@ -187,6 +217,7 @@
     - _Requirements: 7.4_
 
 - [ ] 11. Add documentation for creating demo games
+
   - [ ] 11.1 Update README.md with demo game instructions
     - Document how to modify _create_test_tables
     - Document available game classes
