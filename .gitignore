@@ -11,5 +11,5 @@ venv/
 ## Muse Review Started 11/03/26
 
 *.db 
-*.db-sh 
+*.db-shm 
 *.db-wal
