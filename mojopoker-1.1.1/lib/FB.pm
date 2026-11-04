@@ -1,4 +1,8 @@
 package FB;
+# CHANGE NOTICE (Session 1 forecast wallet, 2026-11-04, California Vision):
+# - daily play-token allotment hook in request() via the fc_wallet service
+# - fc_balance added to _fetch_login_info, register, update_profile, guest_login
+# Poker engine (FB/Poker*) and game logic untouched.
 use Moo;
 
 with 'FB::Poker';
@@ -25,6 +29,7 @@ use FB::Poker::Strategy::Evaluator::OmahaHiLo;
 use FB::Poker::Strategy::Evaluator::Draw;
 use FB::Poker::Strategy::Evaluator::Stud;
 use FB::Session::Manager;
+use FB::Fc::Wallet;
 use Time::Piece;
 use Time::Seconds;
 use MIME::Base64;
@@ -145,6 +150,42 @@ has 'session_manager' => (
 sub _build_session_manager {
     my $self = shift;
     return FB::Session::Manager->new(fb => $self);
+}
+
+# Session 1 (forecast): play-token wallet service (lazy) + schema flag.
+has 'fc_wallet' => (
+    is      => 'rw',
+    isa     => sub { die "Not a FB::Fc::Wallet" unless $_[0]->isa('FB::Fc::Wallet') },
+    builder => '_build_fc_wallet',
+);
+
+sub _build_fc_wallet {
+    my $self = shift;
+    return FB::Fc::Wallet->new(db => $self->db);
+}
+
+# Cached forecast-schema status (undef = not yet attempted).
+has 'fc_schema_ready' => ( is => 'rw' );
+
+sub _fc_ready {
+    my $self = shift;
+    return $self->fc_schema_ready if defined $self->fc_schema_ready;
+    my $ok = eval { FB::Fc::Wallet->ensure_schema( $self->db ); 1 };
+    warn "fc schema ensure failed: $@" unless $ok;
+    $self->fc_schema_ready( $ok ? 1 : 0 );
+    return $self->fc_schema_ready;
+}
+
+sub _fc_balance {
+    my ( $self, $user_id ) = @_;
+    return 0 unless $self->_fc_ready;
+    # Ensure-then-read: register/login/authorize attach a different user
+    # than the request hook saw, and that identity's first touch must
+    # allot before we report its balance. Idempotent, so doubly safe.
+    return eval {
+        $self->fc_wallet->ensure_allotted($user_id);
+        $self->fc_wallet->balance($user_id);
+    } // 0;
 }
 
 # Requirements: 7.4 - House player pool management
@@ -381,6 +422,14 @@ sub request {
 
     $login->last_req_time(time);
 
+    # Session 1 (forecast): daily play-token allotment on the first
+    # authenticated request of the day. Guarded so wallet trouble
+    # never breaks poker traffic.
+    if ( $login->has_user && $self->_fc_ready ) {
+        eval { $self->fc_wallet->ensure_allotted( $login->user->id ) };
+        warn "fc allotment failed: $@" if $@;
+    }
+
     $self->command->{$cmd}->[0]( $self, $login, $opts );
 }
 
@@ -527,6 +576,7 @@ sub guest_login {
                 username => $login->user->username,
                 bookmark => $login->user->bookmark,
                 chips    => $self->db->fetch_chips( $login->user->id ),
+                fc_balance => $self->_fc_balance( $login->user->id ),
                 timer    => int( $self->prize_timer->remaining ),
             }
         ]
@@ -615,7 +665,11 @@ sub register {
     my $ui = $self->_fetch_user_info($login);
     $self->db->update_user( $ui, $login->user->id );
 
-    $response->[1] = { success => 1, %{ $ui } };
+    $response->[1] = {
+        success    => 1,
+        %{ $ui },
+        fc_balance => $self->_fc_balance( $login->user->id ),
+    };
     $login->send($response);
 }
 
@@ -653,7 +707,11 @@ sub _update_profile {
     my $ui = $self->_fetch_user_info($login);
     $self->db->update_user( $ui, $login->user->id );
 
-    return { success => 1, %{ $self->_fetch_user_info($login) } };
+    return {
+        success    => 1,
+        %{ $self->_fetch_user_info($login) },
+        fc_balance => $self->_fc_balance( $login->user->id ),
+    };
 }
 
 sub login_info {
@@ -677,8 +735,9 @@ sub _fetch_login_info {
     my $info = $self->_fetch_user_info($login);
     return {
         %{ $info },
-        login_id => $login->id,
-        success  => 1,
+        login_id   => $login->id,
+        success    => 1,
+        fc_balance => $self->_fc_balance( $login->user->id ),
     };
 }
 
@@ -1133,6 +1192,9 @@ sub BUILD {
 
     # Create test tables with house players on startup
     $self->_create_test_tables();
+
+    # Session 1 (forecast): pre-warm wallet schema (idempotent).
+    $self->_fc_ready;
 }
 
 sub _create_test_tables {

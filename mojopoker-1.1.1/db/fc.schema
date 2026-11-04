@@ -1,0 +1,85 @@
+-- Copyright (C) 2026, California Vision
+-- Forecasting data layer + play-token wallet (Session 1).
+-- Play money only: there is no purchase, transfer-for-value, or cash-out.
+--
+-- Portable SQLite/PostgreSQL DDL: applies unchanged with
+--   sqlite3 fb.db < fc.schema
+--   psql $DATABASE_URL -f fc.schema
+-- (The server also self-applies it idempotently at boot; see FB::Fc::Wallet.)
+--
+-- Portability notes:
+-- - Surrogate keys are TEXT (app-generated, see FB::Fc::Wallet). The engines
+--   share no auto-increment spelling, so no SERIAL or AUTOINCREMENT is used.
+-- - No FOREIGN KEY clauses: the users table is named `user` on SQLite and
+--   `users` on PostgreSQL, so a shared REFERENCES target is impossible.
+--   Staking checks (question exists and is open) are enforced in
+--   FB::Fc::Wallet instead. user_id columns reference user(s).id.
+-- - Calendar days are TEXT 'YYYY-MM-DD' (lexicographic order is chronological).
+-- - TIMESTAMP columns hold FB::Db _format_timestamp values, and JSON
+--   payloads are plain TEXT (no engine JSON operators are used).
+--
+-- Wallet model (fc_wallet_daily): one row per (user, day). The first touch
+-- of a day grants 1000 play tokens, idempotently. balance is the running
+-- spendable total and carries forward: a new day starts at the previous
+-- balance plus 1000. Stakes debit the current day row atomically and are
+-- rejected when the balance is short.
+--
+-- Question lifecycle: draft -> open -> resolved -> settled, void any time.
+-- Resolutions carry outcome + evidence_json (sources + reasoning).
+-- Challenges pause settlement for manual review. Sessions 2-3 own the
+-- question, resolution, and settlement flows; their tables are defined here.
+
+CREATE TABLE IF NOT EXISTS fc_wallet_daily (
+    user_id INTEGER NOT NULL,
+    date TEXT NOT NULL,
+    allotted INTEGER NOT NULL DEFAULT 0,
+    balance INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, date)
+);
+CREATE INDEX IF NOT EXISTS idx_fc_wallet_daily_user ON fc_wallet_daily (user_id);
+
+CREATE TABLE IF NOT EXISTS fc_questions (
+    id TEXT PRIMARY KEY,
+    prompt TEXT NOT NULL,
+    resolution_criteria TEXT,
+    resolution_date TEXT,
+    status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('draft', 'open', 'resolved', 'settled', 'void')),
+    created_by INTEGER,
+    source_snapshot TEXT,
+    resolution_source TEXT,
+    source_ref TEXT,
+    settlement_rule TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_fc_questions_status ON fc_questions (status);
+
+CREATE TABLE IF NOT EXISTS fc_positions (
+    id TEXT PRIMARY KEY,
+    question_id TEXT NOT NULL,
+    user_id INTEGER NOT NULL,
+    side TEXT NOT NULL CHECK (side IN ('YES', 'NO')),
+    stake INTEGER NOT NULL CHECK (stake > 0),
+    price_at_entry INTEGER NOT NULL CHECK (price_at_entry >= 0 AND price_at_entry <= 100),
+    created_at TIMESTAMP NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_fc_positions_question ON fc_positions (question_id);
+CREATE INDEX IF NOT EXISTS idx_fc_positions_user ON fc_positions (user_id);
+
+CREATE TABLE IF NOT EXISTS fc_resolutions (
+    id TEXT PRIMARY KEY,
+    question_id TEXT NOT NULL,
+    outcome TEXT NOT NULL CHECK (outcome IN ('YES', 'NO', 'VOID')),
+    evidence_json TEXT,
+    resolved_at TIMESTAMP,
+    challenge_deadline TIMESTAMP,
+    settled_at TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_fc_resolutions_question ON fc_resolutions (question_id);
+
+CREATE TABLE IF NOT EXISTS fc_challenges (
+    id TEXT PRIMARY KEY,
+    resolution_id TEXT NOT NULL,
+    user_id INTEGER NOT NULL,
+    reason TEXT,
+    status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'upheld', 'rejected'))
+);
+CREATE INDEX IF NOT EXISTS idx_fc_challenges_resolution ON fc_challenges (resolution_id);
