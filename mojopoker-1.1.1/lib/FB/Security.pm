@@ -46,7 +46,7 @@ sub get_security_headers {
         'X-Frame-Options'        => 'SAMEORIGIN',
         'X-Content-Type-Options' => 'nosniff',
         'X-XSS-Protection'       => '1; mode=block',
-        'Content-Security-Policy' => "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://connect.facebook.net https://ajax.googleapis.com; style-src 'self' 'unsafe-inline' https://code.jquery.com; img-src 'self' data: https:; connect-src 'self' wss: https://www.google-analytics.com https://www.facebook.com;",
+        'Content-Security-Policy' => "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://connect.facebook.net https://ajax.googleapis.com; style-src 'self' 'unsafe-inline' https://code.jquery.com; img-src 'self' data: blob: https:; connect-src 'self' ws: wss: https://www.google-analytics.com https://www.facebook.com;",
         'Referrer-Policy'        => 'strict-origin-when-cross-origin',
         'Permissions-Policy'     => 'geolocation=(), microphone=(), camera=()',
     };

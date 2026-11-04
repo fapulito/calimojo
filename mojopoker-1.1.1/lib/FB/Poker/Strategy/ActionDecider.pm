@@ -1,4 +1,4 @@
-﻿package FB::Poker::Strategy::ActionDecider;
+package FB::Poker::Strategy::ActionDecider;
 use Moo;
 
 has 'config' => (

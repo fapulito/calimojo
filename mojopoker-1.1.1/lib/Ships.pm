@@ -59,15 +59,16 @@ sub startup {
   $self->hook(before_dispatch => sub {
     my $c = shift;
     
-    # Requirements: 5.2 - Rate limiting check
-    my $ip = $c->tx->remote_address || '127.0.0.1';
-    unless ($self->security->check_rate_limit($ip)) {
-      $c->render(
-        json => { error => 'rate_limit_exceeded', message => 'Too many requests' },
-        status => 429,
-      );
-      return;
-    }
+    # Requirements: 5.2 - Rate limiting check (disabled for development)
+    # Uncomment for production
+    # my $ip = $c->tx->remote_address || '127.0.0.1';
+    # unless ($self->security->check_rate_limit($ip)) {
+    #   $c->render(
+    #     json => { error => 'rate_limit_exceeded', message => 'Too many requests' },
+    #     status => 429,
+    #   );
+    #   return;
+    # }
     
     # Requirements: 5.1 - Apply security headers to all responses
     my $headers = $self->security->get_security_headers;

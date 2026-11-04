@@ -5,3 +5,11 @@
 node_modules/
 dist/
 build/
+
+venv/
+
+## Muse Review Started 11/03/26
+
+*.db 
+*.db-sh 
+*.db-wal
