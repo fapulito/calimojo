@@ -306,6 +306,154 @@ perl script/mpadmin.pl create_ring -game_class holdem -limit NL -chair_count 6
 
 See `mpadmin.pl --help` for all options.
 
+## Demo Games Configuration
+
+Demo games are pre-configured poker tables created automatically when the server starts. These provide players with immediate access to popular game variants.
+
+### Default Demo Games
+
+The server creates three demo tables on startup:
+- **Texas Hold'em** - 6 seats, No-Limit
+- **Omaha** - 6 seats, Pot-Limit
+- **7-Card Stud** - 8 seats, Pot-Limit
+
+### Modifying Demo Games
+
+To customize which demo games are created at startup, edit the `_create_test_tables` method in `mojopoker-1.1.1/lib/FB.pm`.
+
+**Example: Adding a Razz table**
+
+```perl
+# In _create_test_tables method, add:
+$table_opts = {
+    table_id => $self->table_count + 1,
+    chair_count => 8,           # Stud games support up to 8 players
+    game_class => 'razz',       # Razz (7-Card Stud Low)
+    limit => 'FL',              # Fixed-Limit betting
+    ante => 1,                  # Ante amount
+    bring => 2,                 # Bring-in bet
+    small_bet => 2,             # Small bet for fixed-limit
+    fix_limit => 4,             # Big bet for fixed-limit
+    auto_start => 1,
+    db => $self->db,
+    fb => $self,
+};
+
+$table = $self->table_maker->ring_table($table_opts);
+if ($table) {
+    $self->table_list->{ $table->table_id } = $table;
+    $self->table_count($self->table_count + 1);
+    $self->_add_house_players($table);
+    $self->_notify_lobby(
+        [ 'notify_create_ring', $self->_fetch_table_opts($table) ]
+    );
+}
+```
+
+### Table Configuration Options
+
+| Option | Description | Values |
+|--------|-------------|--------|
+| `chair_count` | Number of seats | 2, 6, 8, or 10 |
+| `game_class` | Poker variant | See game classes below |
+| `limit` | Betting structure | `NL` (No-Limit), `PL` (Pot-Limit), `FL` (Fixed-Limit) |
+| `small_blind` | Small blind amount | Integer (for Hold'em/Omaha) |
+| `big_blind` | Big blind amount | Integer (for Hold'em/Omaha) |
+| `ante` | Ante amount | Integer (for Stud games) |
+| `bring` | Bring-in bet | Integer (for Stud games) |
+| `small_bet` | Small bet (FL only) | Integer |
+| `fix_limit` | Big bet (FL only) | Integer |
+| `auto_start` | Auto-start when ready | 1 (enabled) or 0 (disabled) |
+| `table_min` | Minimum buy-in | Integer |
+| `turn_clock` | Seconds per turn | Integer (default: 30) |
+| `time_bank` | Extra time bank | Integer (default: 60) |
+
+### Available Game Classes
+
+**Hold'em Variants:**
+- `holdem` - Texas Hold'em
+- `holdemjokers` - Hold'em Jokers Wild
+- `pineapple` - Pineapple
+- `crazypine` - Crazy Pineapple
+
+**Omaha Variants:**
+- `omaha` - Omaha
+- `omahahilo` - Omaha Hi-Lo
+- `omahafive` - 5-Card Omaha
+- `omahafivehilo` - 5-Card Omaha Hi-Lo
+- `courcheval` - Courcheval
+- `courchevalhilo` - Courcheval Hi-Lo
+
+**Stud Variants:**
+- `sevenstud` - 7-Card Stud
+- `sevenstudhilo` - 7-Card Stud Hi-Lo
+- `sevenstudjokers` - 7-Card Stud Jokers Wild
+- `razz` - Razz (7-Card Stud Low)
+- `highchicago` - High Chicago
+- `ftq` - Follow the Queen
+- `bitch` - The Bitch
+
+**Draw Variants:**
+- `fivedraw` - 5-Card Draw
+- `drawdeuces` - 5-Card Draw Deuces Wild
+- `drawjokers` - 5-Card Draw Jokers Wild
+- `singledraw27` - 2-7 Single Draw
+- `tripledraw27` - 2-7 Triple Draw
+- `singledrawa5` - A-5 Single Draw
+- `tripledrawa5` - A-5 Triple Draw
+
+**Other Variants:**
+- `badugi` - Badugi
+- `badacey` - Badacey
+- `badeucy` - Badeucy
+- `dealers` - Dealer's Choice
+
+### Using mpadmin.pl
+
+The `mpadmin.pl` script allows runtime table creation without server restart.
+
+**Create a table:**
+```bash
+# 7-Card Stud Hi-Lo with 8 seats
+perl script/mpadmin.pl create_ring -game_class sevenstudhilo -limit PL -chair_count 8 -ante 1
+
+# Heads-up No-Limit Hold'em
+perl script/mpadmin.pl create_ring -game_class holdem -limit NL -chair_count 2 -small_blind 1 -big_blind 2
+
+# Fixed-Limit Razz
+perl script/mpadmin.pl create_ring -game_class razz -limit FL -chair_count 8 -ante 1 -small_bet 2 -fix_limit 4
+```
+
+**Delete a table:**
+```bash
+perl script/mpadmin.pl destroy_ring -table_id 5
+```
+
+**Other admin commands:**
+```bash
+# Credit chips to a user
+perl script/mpadmin.pl credit_chips -login_id 123
+
+# Logout a specific user
+perl script/mpadmin.pl logout_user -login_id 123
+
+# Logout all users
+perl script/mpadmin.pl logout_all
+
+# View all options
+perl script/mpadmin.pl --help
+```
+
+### Bulk Loading Games
+
+Load multiple game configurations from a file:
+
+```bash
+perl script/wsshell.pl < db/example_games
+```
+
+The `example_games` file contains JSON WebSocket commands for creating tables.
+
 ## Admin Tools
 
 - **mpadmin.pl** - Create/delete games, edit players, credit chips

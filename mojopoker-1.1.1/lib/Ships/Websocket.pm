@@ -8,7 +8,25 @@ sub service {
   #$self->inactivity_timeout(0);
   #$self->tx->with_compression;
 
-  my $login = $self->app->fb->_guest_login( { websocket => $self->tx } );
+  my $login;
+  eval {
+    $login = $self->app->fb->_guest_login( { websocket => $self->tx } );
+  };
+  
+  if ($@) {
+    $self->app->log->error("WebSocket error during guest login: $@");
+    $self->send({json => {error => 'login_failed', message => $@}});
+    $self->finish;
+    return;
+  }
+  
+  unless ($login) {
+    $self->app->log->error("WebSocket: Failed to create guest login");
+    $self->send({json => {error => 'login_failed', message => 'Unable to create login'}});
+    $self->finish;
+    return;
+  }
+  
   $self->on(
     message => sub {
       my ( $self, $msg ) = @_;

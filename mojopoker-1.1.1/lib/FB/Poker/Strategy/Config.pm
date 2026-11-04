@@ -2,20 +2,36 @@ package FB::Poker::Strategy::Config;
 use Moo;
 
 # Configuration management for strategy parameters
-# Requirements: 5.1, 5.2, 5.4
+# Requirements: 4.1, 4.2, 5.1, 5.2, 5.4
 
 # Aggression level: 1-10 scale
 # Higher values = more frequent and larger bets
+# Requirement 4.1: Default aggression level of 7
 has 'aggression' => (
     is      => 'rw',
-    default => sub { 5 },
+    default => sub { 7 },
 );
 
 # Tightness level: 1-10 scale  
 # Higher values = stricter hand requirements to enter pots
+# Requirement 4.2: Default tightness level of 4 (looser play)
 has 'tightness' => (
     is      => 'rw',
-    default => sub { 5 },
+    default => sub { 4 },
+);
+
+# Call threshold: minimum hand strength to call a bet
+# Requirement 4.4: Call with medium-strength hands (0.25+)
+has 'call_threshold' => (
+    is      => 'rw',
+    default => sub { 0.25 },
+);
+
+# Bet/raise frequency: probability of betting/raising with playable hands
+# Requirement 4.3: Bet or raise at least 40% of the time
+has 'bet_raise_frequency' => (
+    is      => 'rw',
+    default => sub { 0.40 },
 );
 
 # Bluff frequency: 0.05-0.15 (5-15%)
@@ -68,6 +84,16 @@ sub validate {
     return 0 unless defined $slow_play;
     return 0 unless $slow_play >= 0.0 && $slow_play <= 1.0;
     
+    # Validate call_threshold: must be 0.0-1.0
+    my $call_thresh = $self->call_threshold;
+    return 0 unless defined $call_thresh;
+    return 0 unless $call_thresh >= 0.0 && $call_thresh <= 1.0;
+    
+    # Validate bet_raise_frequency: must be 0.0-1.0
+    my $bet_raise = $self->bet_raise_frequency;
+    return 0 unless defined $bet_raise;
+    return 0 unless $bet_raise >= 0.0 && $bet_raise <= 1.0;
+    
     return 1;
 }
 
@@ -93,6 +119,8 @@ sub update {
         bluff_frequency      => $self->bluff_frequency,
         randomization_factor => $self->randomization_factor,
         slow_play_threshold  => $self->slow_play_threshold,
+        call_threshold       => $self->call_threshold,
+        bet_raise_frequency  => $self->bet_raise_frequency,
     );
     
     # Apply new values
@@ -106,6 +134,10 @@ sub update {
         if exists $params->{randomization_factor};
     $self->slow_play_threshold($params->{slow_play_threshold}) 
         if exists $params->{slow_play_threshold};
+    $self->call_threshold($params->{call_threshold}) 
+        if exists $params->{call_threshold};
+    $self->bet_raise_frequency($params->{bet_raise_frequency}) 
+        if exists $params->{bet_raise_frequency};
     
     # Validate new configuration
     if ($self->validate) {
@@ -118,6 +150,8 @@ sub update {
     $self->bluff_frequency($backup{bluff_frequency});
     $self->randomization_factor($backup{randomization_factor});
     $self->slow_play_threshold($backup{slow_play_threshold});
+    $self->call_threshold($backup{call_threshold});
+    $self->bet_raise_frequency($backup{bet_raise_frequency});
     
     return 0;
 }

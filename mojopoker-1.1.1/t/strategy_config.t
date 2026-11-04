@@ -16,11 +16,13 @@ subtest 'Default configuration' => sub {
     my $config = FB::Poker::Strategy::Config->new;
     ok($config, 'Config object created');
     
-    is($config->aggression, 5, 'Default aggression is 5');
-    is($config->tightness, 5, 'Default tightness is 5');
+    is($config->aggression, 7, 'Default aggression is 7');
+    is($config->tightness, 4, 'Default tightness is 4');
     is($config->bluff_frequency, 0.10, 'Default bluff_frequency is 0.10');
     is($config->randomization_factor, 0.15, 'Default randomization_factor is 0.15');
     is($config->slow_play_threshold, 0.85, 'Default slow_play_threshold is 0.85');
+    is($config->call_threshold, 0.25, 'Default call_threshold is 0.25');
+    is($config->bet_raise_frequency, 0.40, 'Default bet_raise_frequency is 0.40');
     
     ok($config->validate, 'Default config is valid');
 };

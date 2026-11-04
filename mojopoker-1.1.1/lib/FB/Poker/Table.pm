@@ -18,6 +18,9 @@ has 'fb' => ( is => 'rw', );
 
 has 'auto_play_event' => ( is => 'rw', );
 
+# Requirement 3.1, 3.2: Timer reference for house player actions
+has 'house_action_timer' => ( is => 'rw', );
+
 has 'new_game_delay' => (
   is      => 'rw',
   builder => '_build_new_game_delay',
@@ -967,7 +970,7 @@ sub _is_house_player {
   return $username =~ /^HousePlayer\d+$/;
 }
 
-# Requirement 4.1, 4.2: Execute house player action using Strategy Manager
+# Requirement 4.1, 4.2, 3.1, 3.2, 3.3: Execute house player action using Strategy Manager with timer
 sub _house_player_action {
   my $self = shift;
   return unless defined $self->action && $self->fb;
@@ -975,58 +978,91 @@ sub _house_player_action {
   my $chair = $self->chairs->[ $self->action ];
   return unless $chair && $chair->has_player;
   
-  # Get strategy manager from FB instance
-  my $strategy_manager = $self->fb->strategy_manager;
-  return unless $strategy_manager;
+  # Requirement 3.1, 3.2: Clear any existing timer
+  if ( $self->house_action_timer ) {
+    $self->house_action_timer->cancel if $self->house_action_timer->can('cancel');
+    $self->house_action_timer(undef);
+  }
   
-  # Get decision from strategy manager
-  my $decision = $strategy_manager->decide_action( $self, $chair );
-  return unless $decision && ref $decision eq 'HASH';
+  # Requirement 3.2, 3.3: Set 0.5 second timer to execute action
+  # This ensures action completes well before the turn clock expires
+  $self->house_action_timer(
+    FB::Compat::Timer::timer(0.5, 0, sub {
+      $self->_execute_house_action($chair);
+    })
+  );
+}
+
+# Requirement 3.4: Execute house action with fallback
+sub _execute_house_action {
+  my ( $self, $chair ) = @_;
+  
+  # Clear the timer reference
+  $self->house_action_timer(undef);
+  
+  # Verify we still have valid action state
+  return unless defined $self->action && !$self->game_over;
+  return unless $chair && $chair->has_player;
+  
+  # Get strategy manager from FB instance
+  my $strategy_manager = $self->fb ? $self->fb->strategy_manager : undef;
+  
+  my $decision;
+  if ( $strategy_manager ) {
+    eval {
+      $decision = $strategy_manager->decide_action( $self, $chair );
+    };
+    # Log any errors but continue with fallback
+    if ( $@ ) {
+      warn "Strategy manager error: $@";
+    }
+  }
+  
+  # Requirement 3.4: Default action if strategy fails
+  unless ( $decision && ref $decision eq 'HASH' && $decision->{action} ) {
+    $decision = {
+      action => $self->legal_action('check') ? 'check' : 'fold',
+      amount => 0,
+    };
+  }
   
   # Execute the action through existing table methods
   my $action = $decision->{action};
   
   if ( $action eq 'fold' ) {
     $self->fold;
-    $self->action_done;
   }
   elsif ( $action eq 'check' && $self->legal_action('check') ) {
     $self->check;
-    $self->action_done;
   }
   elsif ( $action eq 'bet' || $action eq 'call' || $action eq 'raise' ) {
-    my $amount = $decision->{amount} || 0;
-    if ( $amount > 0 ) {
-      my $bet = $self->bet($amount);
-      $self->action_done if $bet;
-    }
-    else {
-      # If no valid bet amount, check or fold
+    my $amount = $decision->{amount} || $self->_fetch_call_amt || $self->small_bet || 2;
+    my $bet = $self->bet($amount);
+    # If bet fails, fall back to check or fold
+    unless ( $bet ) {
       if ( $self->legal_action('check') ) {
         $self->check;
       }
       else {
         $self->fold;
       }
-      $self->action_done;
     }
   }
   elsif ( $action eq 'draw' && $decision->{cards} ) {
     # Handle draw poker actions
     # This would need integration with draw poker logic
-    # For now, just pass
-    $self->action_done;
   }
   else {
-    # Default: check if possible, otherwise fold
+    # Fallback: check if possible, otherwise fold
     if ( $self->legal_action('check') ) {
       $self->check;
     }
     else {
       $self->fold;
     }
-    $self->action_done;
   }
+  
+  $self->action_done;
 }
 
 # Requirement 4.4: Automatic rebuy for house players when below table minimum

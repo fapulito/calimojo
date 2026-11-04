@@ -13,6 +13,13 @@ requires 'MIME::Base64';
 requires 'SQL::Abstract';
 requires 'Tie::IxHash';
 requires 'Crypt::Eksblowfish';
+requires 'Try::Tiny';
+requires 'LWP::Simple';
+
+# Observability dependencies
+requires 'Sentry::Raven';           # Sentry error tracking client (Requirements: 1.1)
+requires 'LWP::UserAgent';          # HTTP client for Sentry API calls
+requires 'HTTP::Request::Common';   # HTTP request helpers
 
 on 'test' => sub {
     requires 'Test::More', '>= 1.302';
@@ -20,4 +27,5 @@ on 'test' => sub {
     requires 'Test::MockModule';
     requires 'Test::Output';
     requires 'File::Temp';
+    requires 'Test::LectroTest';    # Property-based testing (Testing infrastructure)
 };

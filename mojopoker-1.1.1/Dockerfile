@@ -29,9 +29,9 @@ RUN mkdir -p /app/db
 # Expose port (Fly.io will set PORT env var)
 EXPOSE 8080
 
-# Health check
+# Health check - uses /health endpoint for observability
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \
-  CMD perl -e 'use LWP::Simple; getprint("http://localhost:8080/") or exit 1'
+  CMD perl -e 'use LWP::Simple; my $r = get("http://localhost:8080/health"); exit($r ? 0 : 1)'
 
 # Run the application
 # Fly.io sets PORT env var, but we default to 8080

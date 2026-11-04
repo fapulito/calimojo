@@ -20,7 +20,7 @@ eval {
     require Ships;
     require Mojo::Server::Daemon;
     
-    my @listen = ('http://*:3000');
+    my @listen = ('http://*:8080');
     
     my $daemon = Mojo::Server::Daemon->new(
         app    => Ships->new,
@@ -30,7 +30,7 @@ eval {
     print "=" x 50 . "\n";
     print "  Mojo Poker Server Starting\n";
     print "=" x 50 . "\n";
-    print "  URL: http://localhost:3000\n";
+    print "  URL: http://localhost:8080\n";
     print "  Press Ctrl+C to stop\n";
     print "=" x 50 . "\n\n";
     

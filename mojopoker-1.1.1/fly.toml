@@ -12,6 +12,12 @@ primary_region = "iad"  # US East (Ashburn) - change to your preferred region
 [env]
   MOJO_MODE = "production"
   # PORT is automatically set by Fly.io
+  
+  # Observability configuration placeholders
+  # These should be set as secrets using: fly secrets set KEY=value
+  # SENTRY_DSN = ""           # Set via: fly secrets set SENTRY_DSN=your-sentry-dsn
+  # GA4_MEASUREMENT_ID = ""   # Set via: fly secrets set GA4_MEASUREMENT_ID=G-XXXXXXXXXX
+  # FB_PIXEL_ID = ""          # Set via: fly secrets set FB_PIXEL_ID=your-pixel-id
 
 # HTTP service configuration
 [[services]]
@@ -48,7 +54,7 @@ primary_region = "iad"  # US East (Ashburn) - change to your preferred region
     timeout = "5s"
     grace_period = "10s"
     method = "get"
-    path = "/"
+    path = "/health"
     protocol = "http"
 
 # VM resources
