@@ -135,6 +135,8 @@
                <a href="https://www.facebook.com/nathaniel.graham.35513?ref=bookmarks" target="_blank" >Contact</a>
                <a href="privacy" target="_blank">Privacy Policy</a>
                <a href="terms" target="_blank">Terms and Conditions</a>
+               <!-- Session 2 (2026-11-04, California Vision): Forecast nav link. Poker UI otherwise untouched. -->
+               <a href="forecast">Forecast</a>
             </div>
         </div>
     </div>

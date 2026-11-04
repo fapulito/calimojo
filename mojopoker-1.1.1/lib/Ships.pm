@@ -1,4 +1,6 @@
 package Ships;
+# CHANGE NOTICE (Session 2 forecast page, 2026-11-04, California Vision):
+# - /forecast route serving the play-money forecast UI.
 use Mojo::Base 'Mojolicious';
 use lib 'perl5';
 use FB;
@@ -109,6 +111,9 @@ sub startup {
   $r->get('/admin/metrics')->to(controller => 'dashboard', action => 'metrics');
   $r->get('/admin/logs')->to(controller => 'dashboard', action => 'logs');
   $r->get('/admin/logs.json')->to(controller => 'dashboard', action => 'logs_json');
+
+  # Session 2 (forecast): Forecast page (play money)
+  $r->get('/forecast')->to(controller => 'forecast', action => 'show');
 
   $r->any('*')->to(cb => sub { shift->redirect_to('/') });
 }

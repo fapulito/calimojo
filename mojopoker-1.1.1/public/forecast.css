@@ -1,0 +1,22 @@
+/* Copyright (C) 2026, California Vision — Forecast page styles (Session 2). */
+body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; background: #f2f2f0; color: #222; }
+#fc-app { max-width: 760px; margin: 0 auto; padding: 16px 20px 40px; }
+#fc-head { display: flex; align-items: baseline; gap: 16px; border-bottom: 2px solid #222; padding-bottom: 8px; }
+#fc-head h1 { font-size: 24px; margin: 0; flex: 1; }
+#fc-back { font-size: 14px; }
+#fc-wallet { font-size: 14px; }
+#fc-balance { font-weight: bold; }
+#fc-status { min-height: 1.4em; margin: 8px 0; color: #555; font-size: 14px; }
+h2 { font-size: 18px; margin: 20px 0 10px; }
+.fc-q { background: #fff; border: 1px solid #d8d8d4; border-radius: 4px; padding: 12px 14px; margin-bottom: 12px; }
+.fc-prompt { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+.fc-criteria { font-size: 13px; color: #444; margin-bottom: 4px; }
+.fc-meta { font-size: 12px; color: #666; margin-bottom: 8px; }
+.fc-bar { display: flex; height: 22px; border-radius: 3px; overflow: hidden; font-size: 12px; line-height: 22px; color: #fff; }
+.fc-yes { background: #2e7d32; text-align: left; padding-left: 6px; white-space: nowrap; overflow: hidden; }
+.fc-no { background: #b3261e; text-align: right; padding-right: 6px; white-space: nowrap; overflow: hidden; flex: 1; }
+.fc-totals { font-size: 12px; color: #666; margin: 4px 0 8px; }
+.fc-stake input { width: 80px; }
+.fc-stake button, .fc-q button { margin-left: 6px; }
+.fc-msg { font-size: 12px; color: #b3261e; margin-left: 8px; }
+.fc-empty { color: #666; }

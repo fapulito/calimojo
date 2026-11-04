@@ -2,6 +2,8 @@ package FB;
 # CHANGE NOTICE (Session 1 forecast wallet, 2026-11-04, California Vision):
 # - daily play-token allotment hook in request() via the fc_wallet service
 # - fc_balance added to _fetch_login_info, register, update_profile, guest_login
+# CHANGE NOTICE (Session 2 forecast loop, 2026-11-04, California Vision):
+# - fc_list/fc_stake/fc_generate/fc_approve/fc_reject commands + option checks
 # Poker engine (FB/Poker*) and game logic untouched.
 use Moo;
 
@@ -30,6 +32,7 @@ use FB::Poker::Strategy::Evaluator::Draw;
 use FB::Poker::Strategy::Evaluator::Stud;
 use FB::Session::Manager;
 use FB::Fc::Wallet;
+use FB::Fc::Questions;
 use Time::Piece;
 use Time::Seconds;
 use MIME::Base64;
@@ -162,6 +165,17 @@ has 'fc_wallet' => (
 sub _build_fc_wallet {
     my $self = shift;
     return FB::Fc::Wallet->new(db => $self->db);
+}
+
+has 'fc_questions' => (
+    is      => 'rw',
+    isa     => sub { die "Not a FB::Fc::Questions" unless $_[0]->isa('FB::Fc::Questions') },
+    builder => '_build_fc_questions',
+);
+
+sub _build_fc_questions {
+    my $self = shift;
+    return FB::Fc::Questions->new(db => $self->db);
 }
 
 # Cached forecast-schema status (undef = not yet attempted).
@@ -297,6 +311,13 @@ sub _build_command {
         create_channel  => [ \&create_channel,  { channel  => 1 }, 4 ],
         destroy_channel => [ \&destroy_channel, { channel  => 1 }, 4 ],
         update_news     => [ \&update_news,     { news     => 1 }, 4 ],
+
+        # Session 2 (forecast): question loop
+        fc_list     => [ \&fc_list,     { status => 0 } ],
+        fc_stake    => [ \&fc_stake,    { question_id => 1, side => 1, stake => 1 }, 2 ],
+        fc_generate => [ \&fc_generate, { topic => 0, count => 0 }, 4 ],
+        fc_approve  => [ \&fc_approve,  { question_id => 1 }, 4 ],
+        fc_reject   => [ \&fc_reject,   { question_id => 1 }, 4 ],
     };
 }
 
@@ -321,6 +342,14 @@ sub _build_option {
         #login_id => qr/^\d{1,12}$/,
         user_id  => qr/^\d{1,12}$/,
         table_id => qr/^\d{1,12}$/,
+
+        # Session 2 (forecast). NOTE: no `status` regex on purpose:
+        # authorize and poker commands reuse that key with other values.
+        question_id => qr/^[\w-]{1,64}$/,
+        side        => qr/^(?:YES|NO)$/,
+        stake       => qr/^\d{1,9}$/,
+        topic       => qr/^(?:economics|tech|culture|weather)$/,
+        count       => qr/^[3-5]$/,
     };
 }
 
@@ -370,6 +399,110 @@ sub validate {
     # Note: Password hashing is done in register(), not here
     # validate() only performs format checks, not transformations
     return $opts;
+}
+
+# --- Session 2 (forecast): question loop commands (thin handlers) ---
+sub _fc_code {
+    my ($err) = @_;
+    return ($err =~ /^FC:([a-z_]+):/) ? $1 : 'failed';
+}
+
+sub fc_list {
+    my ( $self, $login, $opts ) = @_;
+    unless ( $self->_fc_ready ) {
+        $login->send( ['fc_list_res', { success => 0, reason => 'unavailable' } ] );
+        return;
+    }
+    my $status = $opts->{status} // 'open';
+    $status = 'open' unless $status =~ /^(?:open|draft)$/;
+    if ( $status ne 'open'
+        && ( !$login->has_user || $login->user->level < 4 ) )
+    {
+        $login->send( [ 'permission_denied', { success => 0, command => 'fc_list' } ] );
+        return;
+    }
+    my $user_id = $login->has_user ? $login->user->id : undef;
+    my $list = eval { $self->fc_questions->list_with_probs( $status, $user_id ) };
+    if ($@) {
+        $login->send( ['fc_list_res', { success => 0, reason => _fc_code($@) } ] );
+        return;
+    }
+    $login->send( [ 'fc_list_res', { success => 1, status => $status, questions => $list } ] );
+}
+
+sub fc_stake {
+    my ( $self, $login, $opts ) = @_;
+    unless ( $self->_fc_ready ) {
+        $login->send( ['fc_stake_res', { success => 0, reason => 'unavailable' } ] );
+        return;
+    }
+    my $user_id = $login->user->id;
+    my $before = eval { $self->fc_questions->implied_prob( $opts->{question_id} ) };
+    if ($@) {
+        $login->send( ['fc_stake_res', { success => 0, reason => _fc_code($@) } ] );
+        return;
+    }
+    my $price = $opts->{side} eq 'YES' ? $before->{prob_yes} : $before->{prob_no};
+    my $pos_id = eval {
+        $self->fc_wallet->stake( $user_id, $opts->{question_id}, $opts->{side},
+            $opts->{stake} + 0, $price );
+    };
+    if (my $err = $@) {
+        $login->send( ['fc_stake_res', { success => 0, reason => _fc_code($err) } ] );
+        return;
+    }
+    my $after = $self->fc_questions->implied_prob( $opts->{question_id} );
+    $login->send(
+        [ 'fc_stake_res',
+            { success => 1, position_id => $pos_id, price => $price,
+              balance => $self->_fc_balance($user_id),
+              question => { id => $opts->{question_id}, %$after } } ] );
+}
+
+sub fc_generate {
+    my ( $self, $login, $opts ) = @_;
+    unless ( $self->_fc_ready ) {
+        $login->send( ['fc_generate_res', { success => 0, reason => 'unavailable' } ] );
+        return;
+    }
+    my $ids = eval {
+        my $headlines =
+            $self->fc_questions->sample_headlines( $opts->{topic}, $opts->{count} // 4 );
+        $self->fc_questions->generate_from_headlines( $headlines, $login->user->id );
+    };
+    if (my $err = $@) {
+        $login->send( ['fc_generate_res', { success => 0, reason => _fc_code($err) } ] );
+        return;
+    }
+    $login->send( [ 'fc_generate_res', { success => 1, draft_ids => $ids } ] );
+}
+
+sub fc_approve {
+    my ( $self, $login, $opts ) = @_;
+    unless ( $self->_fc_ready ) {
+        $login->send( ['fc_approve_res', { success => 0, reason => 'unavailable' } ] );
+        return;
+    }
+    my $ok = eval { $self->fc_questions->approve( $opts->{question_id} ); 1 };
+    if (!$ok) {
+        $login->send( ['fc_approve_res', { success => 0, reason => _fc_code($@) } ] );
+        return;
+    }
+    $login->send( [ 'fc_approve_res', { success => 1, id => $opts->{question_id}, status => 'open' } ] );
+}
+
+sub fc_reject {
+    my ( $self, $login, $opts ) = @_;
+    unless ( $self->_fc_ready ) {
+        $login->send( ['fc_reject_res', { success => 0, reason => 'unavailable' } ] );
+        return;
+    }
+    my $ok = eval { $self->fc_questions->reject( $opts->{question_id} ); 1 };
+    if (!$ok) {
+        $login->send( ['fc_reject_res', { success => 0, reason => _fc_code($@) } ] );
+        return;
+    }
+    $login->send( [ 'fc_reject_res', { success => 1, id => $opts->{question_id}, status => 'void' } ] );
 }
 
 sub request {

@@ -1,0 +1,29 @@
+{
+  "_note": "Fixture: canned model output for draft_questions (fixture mode). Each entry becomes one fc_questions row with status=draft.",
+  "drafts": [
+    {
+      "prompt": "Will the Federal Reserve cut its benchmark rate before December 31, 2026?",
+      "resolution_criteria": "Resolves YES if the Federal Open Market Committee announces a cut to the federal funds target range on or before 2026-12-31, as published in an official FOMC statement. Otherwise NO.",
+      "resolution_date": "2026-12-31",
+      "resolution_source": "Federal Reserve FOMC statements",
+      "source_ref": "https://www.federalreserve.gov",
+      "settlement_rule": "official-announcement"
+    },
+    {
+      "prompt": "Will the national EV battery plant ship sub-$80 per kWh cells before July 1, 2027?",
+      "resolution_criteria": "Resolves YES if the plant operator or a tier-1 auditor publishes delivered cell pricing below $80 per kWh on or before 2027-06-30. Press-release claims without auditor confirmation do not count. Otherwise NO.",
+      "resolution_date": "2027-06-30",
+      "resolution_source": "Tier-1 auditor delivery reports",
+      "source_ref": "auditor-report",
+      "settlement_rule": "auditor-confirmed"
+    },
+    {
+      "prompt": "Will the Atlantic hurricane season produce six or more major hurricanes?",
+      "resolution_criteria": "Resolves YES if the National Hurricane Center's postseason report counts six or more Category 3+ Atlantic storms for the season. Otherwise NO.",
+      "resolution_date": "2026-12-31",
+      "resolution_source": "NHC postseason reports",
+      "source_ref": "https://www.noaa.gov",
+      "settlement_rule": "official-report"
+    }
+  ]
+}

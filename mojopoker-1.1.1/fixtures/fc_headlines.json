@@ -1,0 +1,27 @@
+{
+  "_note": "Fixture: trending non-sports headlines for forecast draft generation. Topics: economics, tech, culture, weather. No sports content by design.",
+  "economics": [
+    "Federal Reserve holds benchmark rate steady, signals one cut before year-end",
+    "Monthly jobs report beats expectations as unemployment holds at four percent",
+    "Consumer inflation cools for third straight month on falling energy prices",
+    "New home sales climb as mortgage rates ease from multi-year highs"
+  ],
+  "tech": [
+    "Regulators finalize new export rules for advanced AI accelerator chips",
+    "EV battery plant milestone promises sub-$80 per kWh cells next year",
+    "Satellite internet constellation passes five million subscribers",
+    "National quantum initiative doubles funding for error-correction research"
+  ],
+  "culture": [
+    "Streaming premiere breaks opening-weekend viewing records",
+    "City museum reports record annual attendance after free-admission pilot",
+    "Summer box office tops five billion in strongest season since 2019",
+    "Vinyl record sales grow for the eighteenth consecutive year"
+  ],
+  "weather": [
+    "Forecasters predict above-average Atlantic hurricane season with six major storms",
+    "Capital records hottest June on record as heat wave stretches into third week",
+    "Mountain snowpack survey comes in 40 percent above seasonal median",
+    "Monsoon rainfall totals finish 25 percent above average across the region"
+  ]
+}
