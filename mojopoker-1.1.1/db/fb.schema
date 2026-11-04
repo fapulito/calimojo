@@ -16,10 +16,13 @@ CREATE TABLE user (
         invested INTEGER DEFAULT 0,
         reg_date datetime,
         facebook_deleted datetime,
-        last_visit datetime
+        last_visit datetime,
+        first_name varchar(50),
+        last_name varchar(50),
+        profile_pic text
 );
 
-INSERT INTO "user" VALUES(1,NULL,4,'127.0.0.1','1d53c9a4e58a0b76f4ab7ad900d8db7814f4d27e','admin','admin',NULL,NULL,NULL,0,0,1426168985,NULL,1472577586);
+INSERT INTO "user" VALUES(1,NULL,4,'127.0.0.1','1d53c9a4e58a0b76f4ab7ad900d8db7814f4d27e','admin','admin',NULL,NULL,NULL,0,0,1426168985,NULL,1472577586,NULL,NULL,NULL);
 
 DROP TABLE IF EXISTS facebook_user;
 

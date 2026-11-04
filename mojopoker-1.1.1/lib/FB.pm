@@ -524,6 +524,8 @@ sub guest_login {
                 success  => 1,
                 login_id => $login->id,
                 user_id  => $login->user->id,
+                username => $login->user->username,
+                bookmark => $login->user->bookmark,
                 chips    => $self->db->fetch_chips( $login->user->id ),
                 timer    => int( $self->prize_timer->remaining ),
             }
@@ -564,13 +566,20 @@ sub register {
     my $response = ['register_res'];
 
     if ( $login->has_user ) {
-        $response->[1] = {
-            success => 0,
-            message => 'Already registered.',
-            user_id => $login->user->id
-        };
-        $login->send($response);
-        return;
+        # Every websocket starts with an auto-attached guest user, so only
+        # a named account (password or facebook_id) blocks registration.
+        # A guest is replaced by the new account.
+        my $old = $login->user;
+        if (defined $old->password || $old->has_facebook_id) {
+            $response->[1] = {
+                success => 0,
+                message => 'Already registered.',
+                user_id => $old->id
+            };
+            $login->send($response);
+            return;
+        }
+        delete $self->user_map->{ $old->id };
     }
 
     # Hash password with bcrypt before storing (cost 12)
@@ -689,6 +698,9 @@ sub _fetch_user_info {
         handle   => $login->user->handle,
         chips    => $chips,
         last_visit => $login->user->last_visit,
+        first_name => $login->user->first_name,
+        last_name => $login->user->last_name,
+        profile_pic => $login->user->profile_pic,
     };
 }
 
@@ -728,6 +740,9 @@ sub authorize {
     # already registered, so login
     if ( $user && ref $user eq 'FB::User' && $user->id ) {
         $login->send( [ "authorize_res", { msg => 'already registerd' } ] );
+        if ($login->has_user && $login->user->id != $user->id) {
+            delete $self->user_map->{ $login->user->id };
+        }
         $login->user($user);
         $self->_login($login);
     }
@@ -853,8 +868,9 @@ sub login_book {
     my $user = $self->db->fetch_user($opts);
 
     unless (ref $user eq 'FB::User') {
+       # Stay connected as a guest: a stale stored bookmark must not
+       # destroy the session (the client drops the bad bookmark).
        $login->send(["login_book_res", { success => 0, reason => "No such user" }]);
-       $self->logout($login);
        return;
     }
     $login->user($user);
@@ -899,7 +915,11 @@ sub logout {
     my ( $self, $login ) = @_;
     my $response = [ 'logout_res', { success => 1 } ];
     $login->send($response);
-    $self->_logout($login);
+    # Detach the identity but keep the websocket open so the client can
+    # re-enter as a guest without reconnecting (admin force-logout still
+    # disconnects via _logout).
+    $self->_cleanup($login);
+    $login->clear_user;
 
     #  $self->_cleanup($login) if $login->has_user_id;
     #  $login->logout unless $login->websocket->is_finished;
@@ -959,7 +979,7 @@ sub _cleanup {
     if ( $login->has_user ) {
 
         # remove from user_map
-        if ( $self->user_map->{ $login->user->id } eq $login->id ) {
+        if (($self->user_map->{ $login->user->id } // '') eq $login->id) {
             delete $self->user_map->{ $login->user->id };
         }
 

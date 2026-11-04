@@ -34,7 +34,10 @@ use lib "$FindBin::Bin/../lib";
             invested INTEGER DEFAULT 400,
             reg_date INTEGER,
             last_visit INTEGER,
-            facebook_deleted INTEGER
+            facebook_deleted INTEGER,
+            level tinyint(2) NOT NULL DEFAULT 1,
+            bookmark varchar(40),
+            handle varchar(255)
         )
     });
     
@@ -145,7 +148,9 @@ SKIP: {
                 reg_date TIMESTAMP,
                 last_visit TIMESTAMP,
                 facebook_deleted TIMESTAMP,
-                bookmark VARCHAR(40)
+                bookmark VARCHAR(40),
+                level INTEGER DEFAULT 0,
+                handle VARCHAR(50)
             )
         });
     };

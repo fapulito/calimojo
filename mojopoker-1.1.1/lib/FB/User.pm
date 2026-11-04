@@ -1,5 +1,6 @@
 package FB::User;
-eval { require EV }; # Optional on Windows
+# NOTE: EV intentionally not loaded on Windows (Strawberry EV XS faults
+# on watcher calls); Mojo timers are used there instead. See FB::Compat::Timer.
 use Moo;
 
 has 'db' => ( is => 'rw', );

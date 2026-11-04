@@ -59,21 +59,30 @@ sub startup {
   $self->hook(before_dispatch => sub {
     my $c = shift;
     
-    # Requirements: 5.2 - Rate limiting check (disabled for development)
-    # Uncomment for production
-    # my $ip = $c->tx->remote_address || '127.0.0.1';
-    # unless ($self->security->check_rate_limit($ip)) {
-    #   $c->render(
-    #     json => { error => 'rate_limit_exceeded', message => 'Too many requests' },
-    #     status => 429,
-    #   );
-    #   return;
-    # }
+    # Requirements: 5.2 - Rate limiting is applied below, after the
+    # security headers (so 429 responses carry them too).
     
     # Requirements: 5.1 - Apply security headers to all responses
     my $headers = $self->security->get_security_headers;
     for my $header (keys %$headers) {
       $c->res->headers->header($header => $headers->{$header});
+    }
+
+    # Requirements: 5.2 - Rate limiting: application requests over the
+    # limit get HTTP 429. Static assets are excluded so pages keep
+    # loading under load. Explicit dev opt-out: MOJOPOKER_RATE_LIMIT=off.
+    my $path = $c->req->url->path->to_string;
+    my $is_static = $path =~ m{\.(?:js|css|png|jpe?g|gif|ico|svg|woff2?|ttf|eot|map)$}i
+        || $path eq '/favicon.ico';
+    if (!$is_static && ($ENV{MOJOPOKER_RATE_LIMIT} // '') ne 'off') {
+      my $ip = $c->tx->remote_address || '127.0.0.1';
+      unless ($self->security->check_rate_limit($ip)) {
+        $c->render(
+          json => { error => 'rate_limit_exceeded', message => 'Too many requests' },
+          status => 429,
+        );
+        return;
+      }
     }
   });
 

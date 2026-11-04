@@ -29,6 +29,14 @@ Hold'em, Hold'em Jokers Wild, Pineapple, Crazy Pineapple, Omaha, Omaha Hi-Lo, 5 
 - **Database**: NeonDB (PostgreSQL) or SQLite for local development
 - **Auth**: Facebook OAuth with stateless JWT tokens
 
+### Authentication (canonical login)
+
+The canonical player login is the Perl WebSocket flow served from
+`mojopoker-1.1.1` (`Ships` + `FB.pm`): page load, auto `guest_login`,
+Facebook `authorize`, and bookmark `login_book` over `/websocket`.
+The `vercel/` Node/Express auth code is an unused prototype — it is not
+wired into the game, so do not build on it.
+
 ## Quick Start
 
 ### Local Development (SQLite)

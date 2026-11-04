@@ -1,5 +1,6 @@
 package FB::Login;
-eval { require EV }; # Optional on Windows
+# NOTE: EV intentionally not loaded on Windows (Strawberry EV XS faults
+# on watcher calls); Mojo timers are used there instead. See FB::Compat::Timer.
 use Moo;
 
 has 'timeout' => (
@@ -23,6 +24,7 @@ has 'user' => (
   is        => 'rw',
   isa       => sub { die unless $_[0]->isa('FB::User') },
   predicate => 'has_user',
+  clearer   => 'clear_user',
 );
 
 has 'first_req_time' => (

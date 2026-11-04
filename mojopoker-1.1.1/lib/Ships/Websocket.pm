@@ -14,8 +14,10 @@ sub service {
   };
   
   if ($@) {
+    # Log the detail server-side; the unauthenticated client only gets
+    # a fixed message (never the raw exception).
     $self->app->log->error("WebSocket error during guest login: $@");
-    $self->send({json => {error => 'login_failed', message => $@}});
+    $self->send({json => {error => 'login_failed', message => 'Unable to create login'}});
     $self->finish;
     return;
   }

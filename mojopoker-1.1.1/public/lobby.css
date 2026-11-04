@@ -205,6 +205,25 @@ body {
     white-space: pre;
 }
 
+#lobby-profile {
+    position: absolute;
+    bottom: 32%;
+    width: 100%;
+    text-align: center;
+    display: none;
+}
+
+.guest-notice {
+    display: inline-block;
+    max-width: 90%;
+    padding: 4px 10px;
+    font-size: 90%;
+    color: #fff8dc;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid #a08030;
+    border-radius: 6px;
+}
+
 #lobby-name {
     position: absolute;
     bottom: 18%;

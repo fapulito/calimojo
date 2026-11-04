@@ -8,7 +8,10 @@ use warnings;
 our $USE_EV;
 
 BEGIN {
-    $USE_EV = eval { require EV; 1 };
+    # Native EV timers only off Windows: this layer exists to give
+    # Windows Mojo timers, and Strawberry's EV XS is unreliable here
+    # (watcher destroy/method calls fault). Linux keeps native EV.
+    $USE_EV = ($^O ne 'MSWin32') && eval { require EV; 1 };
     unless ($USE_EV) {
         require Mojo::IOLoop;
     }
@@ -29,7 +32,11 @@ sub new {
 
 sub cancel {
     my $self = shift;
-    # Remove both initial and recurring timers if they exist
+    # Dropping the native watcher stops it: per the EV docs, a watcher is
+    # automatically stopped when its object is destroyed. No EV methods
+    # are called here by design (the app never calls watcher methods).
+    delete $self->{ev_watcher};
+    # Remove both initial and recurring timers if they exist (Mojo backend)
     Mojo::IOLoop->remove($self->{id}) if $self->{id};
     Mojo::IOLoop->remove($self->{recurring_id}) if $self->{recurring_id};
 }
@@ -58,9 +65,21 @@ package FB::Compat::Timer;
 
 sub timer {
     my ($after, $repeat, $cb) = @_;
-    
+
+    # Callers may pass Time::Seconds objects (e.g. the FB prize timer);
+    # numify so arithmetic and the native watchers get plain seconds.
+    $after  = 0 + $after;
+    $repeat = 0 + $repeat;
+
     if ($USE_EV) {
-        return EV::timer($after, $repeat, $cb);
+        # Wrap the native watcher so every backend returns the same
+        # Handle interface (remaining/cancel), which raw EV::Timer lacks.
+        my $start_time = time();
+        my $ev = EV::timer($after, $repeat, $cb);
+        my $handle = FB::Compat::Timer::Handle->new(
+            undef, $repeat, $start_time, $after, undef);
+        $handle->{ev_watcher} = $ev;
+        return $handle;
     } else {
         # Use Mojo::IOLoop as fallback
         my $start_time = time();
@@ -84,6 +103,15 @@ sub timer {
         }
         return $handle;
     }
+}
+
+# Cancel a handle created by timer(). FB::Session::Manager uses this
+# when a seated player reconnects inside the grace period.
+sub cancel_timer {
+    my ($handle) = @_;
+    return unless $handle && ref($handle) && $handle->can('cancel');
+    $handle->cancel;
+    return 1;
 }
 
 1;

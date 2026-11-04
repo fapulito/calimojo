@@ -409,6 +409,14 @@ sub new_user {
    # Format timestamps for the database (preserves user-provided values)
    $opts->{reg_date} = $self->_format_timestamp($opts->{reg_date});
    $opts->{last_visit} = $self->_format_timestamp($opts->{last_visit});
+
+   # Level 2 gates chat/profile commands; persist it so returning users
+   # keep access after refresh/restart (schema defaults are lower).
+   $opts->{level} //= 2;
+   # Guests have no username yet (final Guest<id> needs the insert id);
+   # stage a placeholder so NOT NULL backends accept the INSERT.
+   my $needs_guest_name = !defined $opts->{username};
+   $opts->{username} //= 'Guest';
    
    my ( $stmt, @bind ) = $self->sql->insert( $table_name, $opts );
    
@@ -438,9 +446,30 @@ sub new_user {
    $opts->{reg_date} = $self->_parse_timestamp($opts->{reg_date}) if defined $opts->{reg_date};
    $opts->{last_visit} = $self->_parse_timestamp($opts->{last_visit}) if defined $opts->{last_visit};
    
-   $opts->{level}    = 2;
-   $opts->{handle}   = $opts->{username} if $opts->{username};
    $opts->{bookmark} = hmac_sha1_hex( $opts->{id}, $self->secret );
+   # Finalize guest names (mirrors FB::User::BUILD) so the stored row
+   # matches the in-memory user.
+   $opts->{username} = 'Guest' . $opts->{id} if $needs_guest_name;
+   $opts->{handle} //= $opts->{username};
+   # Persist the id-derived fields the INSERT could not include, so the
+   # identity survives refreshes and restarts (login_book lookup).
+   eval {
+       my ($ustmt, @ubind) = $self->sql->update(
+           $table_name,
+           { bookmark => $opts->{bookmark}, username => $opts->{username},
+             handle => $opts->{handle}, level => $opts->{level} },
+           { id => $opts->{id} });
+       $self->dbh->do($ustmt, undef, @ubind);
+   };
+   if ($@ || $self->dbh->err) {
+       $self->_log_error(
+           "Failed to persist new user identity",
+           {
+               error => $@ || $self->dbh->errstr,
+               user_id => $opts->{id},
+           }
+       );
+   }
    
    my $user = FB::User->new(%$opts);
    return $user;

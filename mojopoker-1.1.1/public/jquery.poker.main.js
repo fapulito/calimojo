@@ -179,6 +179,9 @@
         logout: function() {
             this.options.wsock.send(JSON.stringify(['logout']));
         },
+        guest_login: function() {
+            this.options.wsock.send(JSON.stringify(['guest_login']));
+        },
         login_info: function() {
             this.options.wsock.send(JSON.stringify(['login_info']));
         },
@@ -537,6 +540,15 @@
                 'login_res': function(v) {
                     o.login_id = v.login_id;
                     o.lobbyMain.lobby('login_res', v);
+                },
+                'login_book_res': function(v) {
+                    o.lobbyMain.lobby('login_book_res', v);
+                },
+                'logout_res': function(v) {
+                    o.lobbyMain.lobby('logout_res', v);
+                },
+                'forced_logout': function(v) {
+                    o.lobbyMain.lobby('forced_logout', v);
                 },
                 'login_info_res': function(v) {
                     o.lobbyMain.lobby('login_info_res', v);

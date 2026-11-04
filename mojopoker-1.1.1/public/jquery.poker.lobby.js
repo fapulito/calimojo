@@ -229,7 +229,9 @@
             var f = this;
             var e;
             if (g.success) {
-                f.login_success(g)
+                f.login_success(g);
+            } else if (g.message) {
+                f.modal_message("Registration failed: " + g.message);
             } 
         },
         update_profile_res: function(g) {
@@ -287,14 +289,19 @@
             h.epochDiff = (new Date).getTime() - (f.epoch * 1000);
             h.myData = {
                 login_id: f.login_id,
+                user_id: f.user_id,
                 username: f.username,
-                chips: f.chips
+                bookmark: f.bookmark,
+                chips: f.chips,
+                isGuest: true
             };
+            e._store_bookmark(f.bookmark);
 
             //$("#lobby-name").html(h.myData.username);
            
             e._reset_timer(f.timer);
 
+            e._show_guest_state(f);
             e._check_login_status();
 
         },
@@ -325,7 +332,7 @@
         _check_login_status: function() {
             var v = this;
             // Check if user is already logged in (has username/chips displayed)
-            if (v.options.myData && v.options.myData.username) {
+            if (v.options.myData && v.options.myData.username && !v.options.myData.isGuest) {
                 // Already logged in, set up logout button
                 $("#lobby-loginout").removeClass("login").addClass("logout").off('click').click(function() {
                     $("#poker-main").main("logout");
@@ -333,22 +340,62 @@
                 return;
             }
 
+            // No Facebook SDK (offline/blocked) -> skip to bookmark/local login.
+            if (typeof FB === 'undefined' || !FB.getLoginStatus) {
+                v._try_stored_bookmark();
+                return;
+            }
             FB.getLoginStatus(function(res) {
                 if (res.status == 'connected') {
                     $("#poker-main").main("authorize", res);
                 } else {
-                   // Add local login option
-                   $("#lobby-loginout").removeClass("logout").addClass("login").off('click').click(function() {
-                      v._show_local_login();
-                   });
+                   v._try_stored_bookmark();
                 }
             });
         },
 
+        _store_bookmark: function(bm) {
+            if (!bm) { return; }
+            try { localStorage.setItem('mojopoker.bookmark', bm); } catch (e) {}
+        },
+        _stored_bookmark: function() {
+            try { return localStorage.getItem('mojopoker.bookmark'); } catch (e) { return null; }
+        },
+        _clear_bookmark: function() {
+            try { localStorage.removeItem('mojopoker.bookmark'); } catch (e) {}
+        },
+        _try_stored_bookmark: function() {
+            var v = this;
+            var stored = v._stored_bookmark();
+            var current = v.options.myData && v.options.myData.bookmark;
+            if (stored && stored !== current) {
+                // Silent re-login on the fresh guest connection.
+                $("#poker-main").main("login_book", { bookmark: stored });
+                return;
+            }
+            // No usable bookmark: offer the login dialog.
+            $("#lobby-loginout").removeClass("logout").addClass("login").off('click').click(function() {
+               v._show_local_login();
+            });
+        },
+        _show_guest_state: function(f) {
+            var name = (f && f.username) || 'Guest';
+            $("#lobby-name").html(name + ' (Guest)').show();
+            $("#lobby-chips").show();
+            $("#lobby-profile").html(
+                '<div class="guest-notice">Playing as a guest. ' +
+                'Connect with Facebook to save your chips and identity.</div>'
+            ).show();
+            $("#lobby-loginout").removeClass("logout").addClass("login");
+        },
         _show_local_login: function() {
             var v = this;
             var dialog = $("<div />").attr("id", "local-login-dialog").html(`
                 <div style="padding: 10px;">
+                    <h3>Save your identity</h3>
+                    <p>You are playing as a guest. Connect with Facebook to save your chips and keep your identity on every visit.</p>
+                    <p><button id="fb-connect-btn">Connect with Facebook</button></p>
+                    <hr>
                     <h3>Local Login</h3>
                     <p>Username: <input type="text" id="local-username" value="testuser"></p>
                     <p>Bookmark: <input type="password" id="local-bookmark" value="8bc55bb6f39c7fc446dccac859e5e2749821ba80"></p>
@@ -384,6 +431,21 @@
 
             $("#local-register-btn").click(function() {
                 v._show_registration();
+            });
+
+            $("#fb-connect-btn").click(function() {
+                $("#modal-box").dialog("close");
+                if (typeof FB !== 'undefined' && FB.login) {
+                    FB.login(function(res) {
+                        if (res && res.status === 'connected') {
+                            $("#poker-main").main("authorize", res);
+                        } else {
+                            v.modal_message("Facebook connect was cancelled. You are still playing as a guest.");
+                        }
+                    });
+                } else {
+                    v.modal_message("Facebook is not available. You can still register locally to keep a bookmark.");
+                }
             });
         },
 
@@ -461,7 +523,10 @@
             var e = this,
                 h = e.options,
                 g = e.element;
-            //this.options.myData = f;
+            h.myData = h.myData || {};
+            h.myData.isGuest = false;
+            e._store_bookmark(f.bookmark);
+            $("#lobby-profile").empty().hide();
             $("#lobby-name").show();
             $("#lobby-chips").show();
             e._update_lobby(f);
@@ -476,9 +541,37 @@
 
             //$("#lobby-name").html(h.myData.username)
         },
+        login_book_res: function(f) {
+            if (!f || f.success) { return; }
+            // Stored bookmark is stale (unknown user): drop it and stay a guest.
+            this._clear_bookmark();
+            var v = this;
+            $("#lobby-loginout").removeClass("logout").addClass("login").off('click').click(function() {
+               v._show_local_login();
+            });
+        },
+        logout_res: function(f) {
+            var e = this, h = e.options;
+            e._clear_bookmark();
+            h.myData = null;
+            $("#lobby-name").hide();
+            $("#lobby-chips").hide();
+            $("#lobby-profile").empty().hide();
+            $("#lobby-cashier").hide();
+            $("#lobby-loginout").removeClass("logout").addClass("login").off('click');
+            // Re-enter as a fresh guest on the still-open socket.
+            $("#poker-main").main("guest_login");
+        },
+        forced_logout: function(f) {
+            this._clear_bookmark();
+            this.options.myData = null;
+            this.modal_message((f && f.message) || 'Another login has been detected.');
+        },
         login_res: function(f) {
             if (f.success) {
-                this.login_success(f)
+                this.login_success(f);
+            } else if (f.reason) {
+                this.modal_message("Login failed: " + f.reason);
                 //e.modal_message("Success! Welcome " + f.username + "!");
             }
         },
