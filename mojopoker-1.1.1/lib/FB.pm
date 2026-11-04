@@ -4,6 +4,8 @@ package FB;
 # - fc_balance added to _fetch_login_info, register, update_profile, guest_login
 # CHANGE NOTICE (Session 2 forecast loop, 2026-11-04, California Vision):
 # - fc_list/fc_stake/fc_generate/fc_approve/fc_reject commands + option checks
+# CHANGE NOTICE (Session 3 resolution, 2026-11-04, California Vision):
+# - fc_resolve/fc_challenge/fc_settle/fc_record/fc_reputation commands
 # Poker engine (FB/Poker*) and game logic untouched.
 use Moo;
 
@@ -33,6 +35,7 @@ use FB::Poker::Strategy::Evaluator::Stud;
 use FB::Session::Manager;
 use FB::Fc::Wallet;
 use FB::Fc::Questions;
+use FB::Fc::Resolution;
 use Time::Piece;
 use Time::Seconds;
 use MIME::Base64;
@@ -178,6 +181,17 @@ sub _build_fc_questions {
     return FB::Fc::Questions->new(db => $self->db);
 }
 
+has 'fc_resolution' => (
+    is      => 'rw',
+    isa     => sub { die "Not a FB::Fc::Resolution" unless $_[0]->isa('FB::Fc::Resolution') },
+    builder => '_build_fc_resolution',
+);
+
+sub _build_fc_resolution {
+    my $self = shift;
+    return FB::Fc::Resolution->new(db => $self->db);
+}
+
 # Cached forecast-schema status (undef = not yet attempted).
 has 'fc_schema_ready' => ( is => 'rw' );
 
@@ -318,6 +332,11 @@ sub _build_command {
         fc_generate => [ \&fc_generate, { topic => 0, count => 0 }, 4 ],
         fc_approve  => [ \&fc_approve,  { question_id => 1 }, 4 ],
         fc_reject   => [ \&fc_reject,   { question_id => 1 }, 4 ],
+        fc_resolve    => [ \&fc_resolve,    { question_id => 1, snippets => 0 }, 2 ],
+        fc_challenge  => [ \&fc_challenge,  { resolution_id => 1, reason => 1 }, 2 ],
+        fc_settle     => [ \&fc_settle,     { question_id => 1 }, 2 ],
+        fc_record     => [ \&fc_record,     { resolution_id => 0, question_id => 0 } ],
+        fc_reputation => [ \&fc_reputation, {} , 2 ],
     };
 }
 
@@ -414,8 +433,8 @@ sub fc_list {
         return;
     }
     my $status = $opts->{status} // 'open';
-    $status = 'open' unless $status =~ /^(?:open|draft)$/;
-    if ( $status ne 'open'
+    $status = 'open' unless $status =~ /^(?:open|draft|resolved|settled)$/;
+    if ( $status eq 'draft'
         && ( !$login->has_user || $login->user->level < 4 ) )
     {
         $login->send( [ 'permission_denied', { success => 0, command => 'fc_list' } ] );
@@ -503,6 +522,102 @@ sub fc_reject {
         return;
     }
     $login->send( [ 'fc_reject_res', { success => 1, id => $opts->{question_id}, status => 'void' } ] );
+}
+
+# --- Session 3 (forecast): resolution commands (thin handlers) ---
+sub fc_resolve {
+    my ( $self, $login, $opts ) = @_;
+    unless ( $self->_fc_ready ) {
+        $login->send( ['fc_resolve_res', { success => 0, reason => 'unavailable' } ] );
+        return;
+    }
+    my $user_id = $login->user->id;
+    my $is_admin = $login->user->level >= 4 ? 1 : 0;
+    my $out = eval {
+        $self->fc_resolution->resolve(
+            $opts->{question_id}, $user_id, $is_admin, $opts->{snippets} );
+    };
+    if (my $err = $@) {
+        $login->send( ['fc_resolve_res', { success => 0, reason => _fc_code($err) } ] );
+        return;
+    }
+    $login->send( [ 'fc_resolve_res', { success => 1, %$out } ] );
+}
+
+sub fc_challenge {
+    my ( $self, $login, $opts ) = @_;
+    unless ( $self->_fc_ready ) {
+        $login->send( ['fc_challenge_res', { success => 0, reason => 'unavailable' } ] );
+        return;
+    }
+    my $out = eval {
+        $self->fc_resolution->challenge(
+            $opts->{resolution_id}, $login->user->id, $opts->{reason} );
+    };
+    if (my $err = $@) {
+        $login->send( ['fc_challenge_res', { success => 0, reason => _fc_code($err) } ] );
+        return;
+    }
+    $login->send( [ 'fc_challenge_res', { success => 1, %$out } ] );
+}
+
+sub fc_settle {
+    my ( $self, $login, $opts ) = @_;
+    unless ( $self->_fc_ready ) {
+        $login->send( ['fc_settle_res', { success => 0, reason => 'unavailable' } ] );
+        return;
+    }
+    my $user_id = $login->user->id;
+    my $is_admin = $login->user->level >= 4 ? 1 : 0;
+    my $out = eval {
+        $self->fc_resolution->settle( $opts->{question_id}, $user_id, $is_admin );
+    };
+    if (my $err = $@) {
+        $login->send( ['fc_settle_res', { success => 0, reason => _fc_code($err) } ] );
+        return;
+    }
+    $login->send(
+        [ 'fc_settle_res',
+            { success => 1, %$out, balance => $self->_fc_balance($user_id) } ] );
+}
+
+sub fc_record {
+    my ( $self, $login, $opts ) = @_;
+    unless ( $self->_fc_ready ) {
+        $login->send( ['fc_record_res', { success => 0, reason => 'unavailable' } ] );
+        return;
+    }
+    my $rid = $opts->{resolution_id};
+    if ( !$rid && $opts->{question_id} ) {
+        my $row = eval {
+            $self->fc_resolution->get_resolution_for_question( $opts->{question_id} );
+        };
+        $rid = $row->{id} if $row;
+    }
+    unless ($rid) {
+        $login->send( ['fc_record_res', { success => 0, reason => 'not_resolved' } ] );
+        return;
+    }
+    my $rec = eval { $self->fc_resolution->get_resolution_record($rid) };
+    if ( !$rec ) {
+        $login->send( ['fc_record_res', { success => 0, reason => 'no_such_resolution' } ] );
+        return;
+    }
+    $login->send( [ 'fc_record_res', { success => 1, record => $rec } ] );
+}
+
+sub fc_reputation {
+    my ( $self, $login, $opts ) = @_;
+    unless ( $self->_fc_ready ) {
+        $login->send( ['fc_reputation_res', { success => 0, reason => 'unavailable' } ] );
+        return;
+    }
+    my $rep = eval { $self->fc_resolution->reputation( $login->user->id ) };
+    if (my $err = $@) {
+        $login->send( ['fc_reputation_res', { success => 0, reason => _fc_code($err) } ] );
+        return;
+    }
+    $login->send( [ 'fc_reputation_res', { success => 1, %$rep } ] );
 }
 
 sub request {

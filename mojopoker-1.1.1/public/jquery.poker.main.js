@@ -1,3 +1,5 @@
+// CHANGE NOTICE (Session 3 forecast reputation, 2026-11-04, California Vision):
+// - fc_reputation request + fc_reputation_res dispatch to the lobby widget.
 ;
 (function($, window, document, undefined) {
     $.widget('poker.main', {
@@ -185,6 +187,9 @@
         login_info: function() {
             this.options.wsock.send(JSON.stringify(['login_info']));
         },
+        fc_reputation: function() {
+            this.options.wsock.send(JSON.stringify(['fc_reputation']));
+        },
         table_opts: function(v) {
             this.options.wsock.send(JSON.stringify(['table_opts', v]));
             //alert('table_opts ' + JSON.stringify(v));
@@ -297,6 +302,9 @@
                 },
                 'update_profile_res': function(v) {
                     o.lobbyMain.lobby('update_profile_res', v);
+                },
+                'fc_reputation_res': function(v) {
+                    o.lobbyMain.lobby('fc_reputation_res', v);
                 },
                 'join_channel_res': function(v) {
                     o.lobbyMain.lobby('join_channel_res', v);

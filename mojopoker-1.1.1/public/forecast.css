@@ -1,4 +1,4 @@
-/* Copyright (C) 2026, California Vision — Forecast page styles (Session 2). */
+/* Copyright (C) 2026, California Vision — Forecast page styles (Sessions 2-3). */
 body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; background: #f2f2f0; color: #222; }
 #fc-app { max-width: 760px; margin: 0 auto; padding: 16px 20px 40px; }
 #fc-head { display: flex; align-items: baseline; gap: 16px; border-bottom: 2px solid #222; padding-bottom: 8px; }
@@ -20,3 +20,15 @@ h2 { font-size: 18px; margin: 20px 0 10px; }
 .fc-stake button, .fc-q button { margin-left: 6px; }
 .fc-msg { font-size: 12px; color: #b3261e; margin-left: 8px; }
 .fc-empty { color: #666; }
+/* Session 3: reputation line, resolve buttons, record page. */
+#fc-rep { font-size: 14px; }
+#fc-rep-text { font-weight: bold; }
+.fc-resolve { margin-top: 8px; }
+.fc-outcome { font-size: 20px; font-weight: 700; }
+.fc-outcome-yes { color: #2e7d32; }
+.fc-outcome-no { color: #b3261e; }
+.fc-reasoning { font-size: 14px; white-space: pre-wrap; }
+.fc-sources { font-size: 13px; }
+.fc-sources li { margin-bottom: 4px; }
+.fc-challenge-form textarea { width: 100%; max-width: 560px; height: 64px; }
+.fc-record-status { font-size: 13px; color: #444; margin-bottom: 8px; }

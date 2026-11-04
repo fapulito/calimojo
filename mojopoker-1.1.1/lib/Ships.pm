@@ -1,6 +1,8 @@
 package Ships;
 # CHANGE NOTICE (Session 2 forecast page, 2026-11-04, California Vision):
 # - /forecast route serving the play-money forecast UI.
+# CHANGE NOTICE (Session 3 resolution record, 2026-11-04, California Vision):
+# - /forecast/record/:id route serving the public resolution record page.
 use Mojo::Base 'Mojolicious';
 use lib 'perl5';
 use FB;
@@ -114,6 +116,9 @@ sub startup {
 
   # Session 2 (forecast): Forecast page (play money)
   $r->get('/forecast')->to(controller => 'forecast', action => 'show');
+
+  # Session 3 (forecast): public resolution record page
+  $r->get('/forecast/record/:id')->to(controller => 'forecast', action => 'record');
 
   $r->any('*')->to(cb => sub { shift->redirect_to('/') });
 }

@@ -42,10 +42,33 @@ has 'fixture_dir' => (
 
 sub is_fixture { shift->fixture ? 1 : 0 }
 
+# Default source snippets handed to the resolve operation when the caller
+# supplies none (read from the fixtures dir, live or fixture mode alike).
+sub default_snippets {
+    my ($self) = @_;
+    my $file = File::Spec->catfile($self->fixture_dir, 'fc_sources.json');
+    open my $fh, '<', $file or die "FC:model: open $file: $!";
+    local $/;
+    my $data = eval { j(scalar <$fh>) };
+    my $err = $@;
+    close $fh;
+    die "FC:model: bad fixture $file: $err" if $err;
+    my $snips = ref $data eq 'HASH' ? $data->{snippets} : undef;
+    die "FC:model: fixture fc_sources.json has no snippets"
+        unless ref $snips eq 'ARRAY';
+    return $snips;
+}
+
 my %OPS = (
     draft_questions => {
         fixture => 'fc_draft_questions.json',
         key     => 'drafts',
+        want    => 'ARRAY',
+    },
+    resolve => {
+        fixture => 'fc_resolve.json',
+        key     => undef,
+        want    => 'HASH',
     },
 );
 
@@ -67,9 +90,8 @@ sub _generate_fixture {
     my $data = eval { j(scalar <$fh>) };
     close $fh;
     die "FC:model: bad fixture $file: $@" if $@;
-    my $out = ref $data eq 'HASH' ? $data->{ $op->{key} } : $data;
-    $out = $data if !defined $out && ref $data eq 'ARRAY';
-    die "FC:model: fixture $file has no $op->{key}" unless ref $out eq 'ARRAY';
+    my $out = (ref $data eq 'HASH' && defined $op->{key}) ? $data->{ $op->{key} } : $data;
+    die "FC:model: fixture $file: want $op->{want}" unless ref $out eq $op->{want};
     return $out;
 }
 
@@ -91,11 +113,33 @@ PROMPT
     return ($system, $user);
 }
 
+sub _prompt_resolve {
+    my ($input) = @_;
+    my $snips = join "\n",
+        map { '- ' . ($_->{source} // '?') . ': ' . ($_->{text} // '') }
+        @{ $input->{snippets} // [] };
+    my $system = 'You resolve forecasting questions. Reply with JSON only, no prose.';
+    my $user = <<"PROMPT";
+Resolve this yes/no question against its criteria using the sources below.
+Reply ONLY with JSON of this shape:
+{"outcome": "YES|NO", "reasoning": "...", "sources_used": [{"source": "...", "ref": "..."}]}
+
+Question: $input->{prompt}
+Criteria: $input->{criteria}
+
+Sources:
+$snips
+PROMPT
+    return ($system, $user);
+}
+
 sub _generate_real {
     my ($self, $operation, $op, $input) = @_;
     die 'FC:no_api_key: set MODEL_API_KEY' unless $self->api_key;
     my ($system, $user) = $operation eq 'draft_questions'
         ? _prompt_drafts($input)
+        : $operation eq 'resolve'
+        ? _prompt_resolve($input)
         : die "FC:model: no prompt for $operation";
     my $ua = Mojo::UserAgent->new(request_timeout => 30, inactivity_timeout => 30);
     (my $base = $self->api_base_url) =~ s{/+$}{};
@@ -116,9 +160,8 @@ sub _generate_real {
     die 'FC:model_parse: no JSON object in model reply' unless $json;
     my $data = eval { j($json) };
     die "FC:model_parse: $@" if $@;
-    my $out = ref $data eq 'HASH' ? $data->{ $op->{key} } : $data;
-    $out = $data if !defined $out && ref $data eq 'ARRAY';
-    die "FC:model_parse: reply has no $op->{key}" unless ref $out eq 'ARRAY';
+    my $out = (ref $data eq 'HASH' && defined $op->{key}) ? $data->{ $op->{key} } : $data;
+    die "FC:model_parse: reply want $op->{want}" unless ref $out eq $op->{want};
     return $out;
 }
 
@@ -149,8 +192,12 @@ demoable and testable offline. Swapping in a real key is a config change.
 
 =item generate($operation, $input)
 
-Runs one named operation (currently C<draft_questions>) and returns the
+Runs one named operation (C<draft_questions>, C<resolve>) and returns the
 decoded payload. Dies C<FC:...> on transport, parse, or fixture errors.
+
+=item default_snippets()
+
+Source snippets from C<fc_sources.json> used when the caller gives none.
 
 =back
 

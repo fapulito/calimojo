@@ -1,6 +1,6 @@
-/* Copyright (C) 2026, California Vision — Forecast page client (Session 2). Play money only. */
+/* Copyright (C) 2026, California Vision — Forecast page client (Sessions 2-3). Play money only. */
 var Forecast = (function() {
-    var ws = null, wsUrl = null, myLevel = 0;
+    var ws = null, wsUrl = null, myLevel = 0, myId = null, doneCache = { resolved: null, settled: null };
 
     function esc(s) {
         return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
@@ -34,7 +34,7 @@ var Forecast = (function() {
     }
 
     function questionHtml(q) {
-        return '<div class="fc-q">' +
+        var html = '<div class="fc-q">' +
             '<div class="fc-prompt">' + esc(q.prompt) + '</div>' +
             '<div class="fc-criteria">' + esc(q.resolution_criteria) + '</div>' +
             '<div class="fc-meta">Resolves: ' + esc(q.resolution_date || 'TBD') + '</div>' +
@@ -43,7 +43,13 @@ var Forecast = (function() {
             '<input type="number" class="fc-amt" min="1" value="10">' +
             '<button class="fc-btn" data-side="YES">Stake YES</button>' +
             '<button class="fc-btn" data-side="NO">Stake NO</button>' +
-            '<span class="fc-msg"></span></div></div>';
+            '<span class="fc-msg"></span></div>';
+        if (myId !== null && (myLevel >= 4 || String(myId) === String(q.created_by))) {
+            html += '<div class="fc-resolve" data-qid="' + esc(q.id) + '">' +
+                '<button class="fc-resolve-btn">Resolve</button>' +
+                '<span class="fc-msg"></span></div>';
+        }
+        return html + '</div>';
     }
 
     function renderOpen(questions) {
@@ -54,6 +60,38 @@ var Forecast = (function() {
         }
         for (var i = 0; i < questions.length; i++) {
             box.append(questionHtml(questions[i]));
+        }
+    }
+
+    function renderRep(v) {
+        var t;
+        if ((v.won + v.lost) > 0) {
+            t = v.won + ' won · ' + v.lost + ' lost · Brier ' +
+                ((v.brier === null || v.brier === undefined) ? '—' : Number(v.brier).toFixed(2));
+        } else {
+            t = 'no settled positions yet';
+        }
+        $('#fc-rep-text').text(t);
+    }
+
+    function renderDone() {
+        if (doneCache.resolved === null || doneCache.settled === null) {
+            return;
+        }
+        var questions = doneCache.resolved.concat(doneCache.settled);
+        var box = $('#fc-resolved').empty();
+        if (!questions.length) {
+            box.html('<p class="fc-empty">Nothing resolved yet.</p>');
+            return;
+        }
+        for (var i = 0; i < questions.length; i++) {
+            var q = questions[i];
+            var mine = (q.my_yes || q.my_no) ? ' — you: ' + q.my_yes + ' YES / ' + q.my_no + ' NO' : '';
+            box.append('<div class="fc-q">' +
+                '<div class="fc-prompt">' + esc(q.prompt) + '</div>' +
+                '<div class="fc-meta">' + esc(q.status) + ' · final: ' +
+                q.yes_total + ' YES / ' + q.no_total + ' NO' + esc(mine) + '</div>' +
+                '<a href="/forecast/record/' + esc(q.id) + '">View resolution record</a></div>');
         }
     }
 
@@ -77,6 +115,9 @@ var Forecast = (function() {
 
     function refresh() {
         send(['fc_list']);
+        send(['fc_list', {status: 'resolved'}]);
+        send(['fc_list', {status: 'settled'}]);
+        send(['fc_reputation']);
         if (myLevel >= 4) {
             send(['fc_list', {status: 'draft'}]);
         }
@@ -104,6 +145,7 @@ var Forecast = (function() {
             $('#fc-user').text(v.username);
             $('#fc-balance').text(v.fc_balance);
             myLevel = v.level || 0;
+            myId = (v.id === null || v.id === undefined) ? null : v.id;
             storeBookmark(v.bookmark);
             if (myLevel >= 4) {
                 $('#fc-admin').show();
@@ -122,6 +164,9 @@ var Forecast = (function() {
             status('');
             if (v.status === 'draft') {
                 renderDrafts(v.questions || []);
+            } else if (v.status === 'resolved' || v.status === 'settled') {
+                doneCache[v.status] = v.questions || [];
+                renderDone();
             } else {
                 renderOpen(v.questions || []);
             }
@@ -133,6 +178,18 @@ var Forecast = (function() {
             $('#fc-balance').text(v.balance);
             status('Staked at ' + v.price + '%. New balance: ' + v.balance + '.');
             refresh();
+        } else if (k === 'fc_resolve_res') {
+            if (!v.success) {
+                status('Resolve failed: ' + (v.reason || ''));
+                return;
+            }
+            status('Resolved ' + v.outcome + '. Challenge window open.');
+            refresh();
+        } else if (k === 'fc_reputation_res') {
+            if (!v.success) {
+                return;
+            }
+            renderRep(v);
         } else if (k === 'fc_generate_res') {
             if (!v.success) {
                 status('Generate failed: ' + (v.reason || ''));
@@ -162,6 +219,12 @@ var Forecast = (function() {
             }
             box.find('.fc-msg').text('');
             send(['fc_stake', {question_id: box.data('qid'), side: $(this).data('side'), stake: amt}]);
+        });
+        $('#fc-open').on('click', '.fc-resolve-btn', function() {
+            var box = $(this).closest('.fc-resolve');
+            box.find('.fc-msg').text('');
+            status('Resolving…');
+            send(['fc_resolve', {question_id: box.data('qid')}]);
         });
         $('#fc-generate-btn').on('click', function() {
             var t = $('#fc-topic').val();

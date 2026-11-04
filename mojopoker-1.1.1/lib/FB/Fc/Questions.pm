@@ -1,5 +1,5 @@
 # Copyright (C) 2026, California Vision
-# Forecast question service (Session 2): drafts, approval, listing with
+# Forecast question service (Sessions 2-3): drafts, approval, listing with
 # parimutuel implied probabilities. Play money only.
 package FB::Fc::Questions;
 use strict;
@@ -11,6 +11,7 @@ use List::Util qw(shuffle);
 use Mojo::JSON qw(j);
 
 use FB::Fc::Model;
+use FB::Fc::Wallet;
 
 # Pseudo-volume per side so untouched and first-stake questions display
 # sanely (an empty question shows 50/50).
@@ -25,6 +26,11 @@ has 'db' => (
 has 'model' => (
     is      => 'ro',
     default => sub { FB::Fc::Model->new },
+);
+
+has 'wallet' => (
+    is      => 'ro',
+    default => sub { my $self = shift; FB::Fc::Wallet->new(db => $self->db) },
 );
 
 sub _die {
@@ -87,7 +93,7 @@ sub generate_from_headlines {
     my @ids;
     for my $d (@$drafts) {
         next unless ref $d eq 'HASH' && defined $d->{prompt} && length $d->{prompt};
-        my $id = sprintf 'q_%d_%d_%04d', time, $$, int(rand(10000));
+        my $id = $self->wallet->gen_id('q');
         $self->db->dbh->do(
             'INSERT INTO fc_questions (id, prompt, resolution_criteria, resolution_date, status, created_by, source_snapshot, resolution_source, source_ref, settlement_rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             undef, $id, $d->{prompt}, $d->{resolution_criteria},
@@ -155,12 +161,12 @@ sub implied_prob {
     };
 }
 
-# Open (or draft, for admins) questions with probabilities + the caller's
-# own staked totals per question.
+# Questions of one status (open/draft/resolved/settled) with probabilities
+# + the caller's own staked totals per question.
 sub list_with_probs {
     my ($self, $status, $user_id) = @_;
     $status //= 'open';
-    _die('bad_status', 'bad status') unless $status =~ /^(?:open|draft)$/;
+    _die('bad_status', 'bad status') unless $status =~ /^(?:open|draft|resolved|settled)$/;
     my $rows = $self->db->dbh->selectall_arrayref(
         'SELECT id, prompt, resolution_criteria, resolution_date, status, created_by FROM fc_questions WHERE status = ? ORDER BY id ASC',
         { Slice => {} }, $status);

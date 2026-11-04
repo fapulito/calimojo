@@ -1,0 +1,9 @@
+{
+  "_note": "Fixture: canned model output for the resolve operation (fixture mode).",
+  "outcome": "YES",
+  "reasoning": "Two of the three cited sources confirm the checked condition was met before the resolution date, and no source contradicts it.",
+  "sources_used": [
+    {"source": "Federal Reserve FOMC statement", "ref": "https://www.federalreserve.gov"},
+    {"source": "Tier-1 auditor delivery report", "ref": "auditor-report"}
+  ]
+}

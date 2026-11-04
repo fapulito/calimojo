@@ -25,9 +25,12 @@
 -- rejected when the balance is short.
 --
 -- Question lifecycle: draft -> open -> resolved -> settled, void any time.
+-- Resolution status: proposed -> challenged (first filed challenge) -> settled.
 -- Resolutions carry outcome + evidence_json (sources + reasoning).
 -- Challenges pause settlement for manual review. Sessions 2-3 own the
 -- question, resolution, and settlement flows; their tables are defined here.
+-- Positions gain won (NULL until settled); per-user reputation is
+-- recomputed from settled positions at each settlement.
 
 CREATE TABLE IF NOT EXISTS fc_wallet_daily (
     user_id INTEGER NOT NULL,
@@ -59,7 +62,8 @@ CREATE TABLE IF NOT EXISTS fc_positions (
     side TEXT NOT NULL CHECK (side IN ('YES', 'NO')),
     stake INTEGER NOT NULL CHECK (stake > 0),
     price_at_entry INTEGER NOT NULL CHECK (price_at_entry >= 0 AND price_at_entry <= 100),
-    created_at TIMESTAMP NOT NULL
+    created_at TIMESTAMP NOT NULL,
+    won INTEGER CHECK (won IN (0, 1))
 );
 CREATE INDEX IF NOT EXISTS idx_fc_positions_question ON fc_positions (question_id);
 CREATE INDEX IF NOT EXISTS idx_fc_positions_user ON fc_positions (user_id);
@@ -68,6 +72,7 @@ CREATE TABLE IF NOT EXISTS fc_resolutions (
     id TEXT PRIMARY KEY,
     question_id TEXT NOT NULL,
     outcome TEXT NOT NULL CHECK (outcome IN ('YES', 'NO', 'VOID')),
+    status TEXT NOT NULL DEFAULT 'proposed' CHECK (status IN ('proposed', 'challenged', 'settled')),
     evidence_json TEXT,
     resolved_at TIMESTAMP,
     challenge_deadline TIMESTAMP,
@@ -83,3 +88,11 @@ CREATE TABLE IF NOT EXISTS fc_challenges (
     status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'upheld', 'rejected'))
 );
 CREATE INDEX IF NOT EXISTS idx_fc_challenges_resolution ON fc_challenges (resolution_id);
+
+CREATE TABLE IF NOT EXISTS fc_reputation (
+    user_id INTEGER PRIMARY KEY,
+    won INTEGER NOT NULL DEFAULT 0,
+    lost INTEGER NOT NULL DEFAULT 0,
+    brier REAL,
+    updated_at TIMESTAMP
+);

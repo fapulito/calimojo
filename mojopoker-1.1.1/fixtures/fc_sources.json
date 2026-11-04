@@ -1,0 +1,17 @@
+{
+  "_note": "Fixture: default source snippets handed to the model at resolve time (fixture file is fine per spec).",
+  "snippets": [
+    {
+      "source": "Federal Reserve FOMC statement",
+      "text": "The Committee decided to lower the target range for the federal funds rate by one quarter point, citing progress on inflation and balanced risks."
+    },
+    {
+      "source": "Tier-1 auditor delivery report",
+      "text": "Audited deliveries for the quarter averaged $78.40 per kWh across all contracted volumes, meeting the sub-$80 milestone."
+    },
+    {
+      "source": "NHC postseason report",
+      "text": "The season produced six major hurricanes, the highest count since 2005, with totalace 40 percent above average."
+    }
+  ]
+}

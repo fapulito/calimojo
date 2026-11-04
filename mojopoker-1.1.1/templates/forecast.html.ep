@@ -1,4 +1,4 @@
-<!-- Copyright (C) 2026, California Vision — Forecast page (Session 2). Play money only. -->
+<!-- Copyright (C) 2026, California Vision — Forecast page (Sessions 2-3). Play money only. -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -12,10 +12,13 @@
             <a id="fc-back" href="/">Back to poker</a>
             <h1>Forecast</h1>
             <div id="fc-wallet">Balance: <span id="fc-balance">&hellip;</span> play tokens (<span id="fc-user">&hellip;</span>)</div>
+            <div id="fc-rep">Forecast record: <span id="fc-rep-text">&hellip;</span></div>
         </div>
         <div id="fc-status">Connecting&hellip;</div>
         <h2>Open questions</h2>
         <div id="fc-open"><p class="fc-empty">Loading&hellip;</p></div>
+        <h2>Resolved &amp; settled</h2>
+        <div id="fc-resolved"><p class="fc-empty">Loading&hellip;</p></div>
         <div id="fc-admin" style="display:none">
             <h2>Draft approval queue (admin)</h2>
             <div id="fc-generate-row">

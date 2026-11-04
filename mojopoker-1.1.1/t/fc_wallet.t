@@ -159,7 +159,7 @@ subtest 'allotment hook and fc_balance in session API' => sub {
     my $fb = FB->new(address_block => {}, facebook_secret => 'test');
     my @tables = @{ $fb->db->dbh->selectcol_arrayref(
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'fc\_%' ESCAPE '\\'") };
-    is(scalar(@tables), 5, 'boot pre-warms all 5 fc tables');
+    is(scalar(@tables), 6, 'boot pre-warms all 6 fc tables');
 
     my $tx = FakeTx2->new(conn => 'w1');
     my $g = $fb->_guest_login({ websocket => $tx });

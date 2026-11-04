@@ -29,9 +29,13 @@ sub today {
 }
 
 # Unique TEXT surrogate key (both engines lack a shared auto-increment).
-sub _gen_id {
+# Shared with the other FB::Fc::* modules.
+sub gen_id {
     my ($self, $prefix) = @_;
-    return sprintf '%s_%d_%d_%04d', $prefix, time, $$, int(rand(10000));
+    require Time::HiRes;
+    my $t = Time::HiRes::time();
+    return sprintf '%s_%d_%06d_%d_%04d',
+        $prefix, int($t), int(($t - int($t)) * 1_000_000), $$, int(rand(10000));
 }
 
 sub schema_file {
@@ -52,6 +56,20 @@ sub ensure_schema {
         $stmt =~ s/^\s+|\s+$//g;
         next unless length $stmt;
         $db->dbh->do($stmt);
+    }
+    # Session 3 migrations on pre-existing tables (fresh databases get them
+    # from fc.schema; duplicate-column errors are ignored portably and
+    # silently, since up-to-date databases hit them on every boot).
+    my $dbh = $db->dbh;
+    for my $alter (
+        "ALTER TABLE fc_resolutions ADD COLUMN status TEXT NOT NULL DEFAULT 'proposed'",
+        'ALTER TABLE fc_positions ADD COLUMN won INTEGER CHECK (won IN (0, 1))',
+    ) {
+        local $dbh->{PrintError} = 0;
+        eval { $dbh->do($alter) };
+        if ($@ && $@ !~ /duplicate|already exists/i) {
+            die $@;
+        }
     }
     return 1;
 }
@@ -103,6 +121,20 @@ sub balance {
     return $row ? $row->{balance} + 0 : 0;
 }
 
+# Settlement-only credit for winnings/refunds, called by FB::Fc::Resolution.
+# NOT a generic deposit: there is still no purchase, transfer-for-value, or
+# cash-out path. Returns the new balance.
+sub settle_credit {
+    my ($self, $user_id, $amount) = @_;
+    _die('invalid_amount', 'amount must be a positive integer')
+        unless defined $amount && $amount =~ /^\d+$/ && $amount > 0;
+    $self->ensure_allotted($user_id);
+    $self->db->dbh->do(
+        'UPDATE fc_wallet_daily SET balance = balance + ? WHERE user_id = ? AND date = ?',
+        undef, $amount, $user_id, $self->today);
+    return $self->balance($user_id);
+}
+
 # Minimal question row (staking prerequisite). Sessions 2-3 own drafts,
 # approval, resolution, and settlement; only open questions take stakes here.
 sub create_question {
@@ -112,7 +144,7 @@ sub create_question {
     my $status = $opts->{status} // 'open';
     _die('invalid_status', 'bad status')
         unless $status =~ /^(?:draft|open|resolved|settled|void)$/;
-    my $id = $self->_gen_id('q');
+    my $id = $self->gen_id('q');
     $self->db->dbh->do(
         'INSERT INTO fc_questions (id, prompt, resolution_criteria, resolution_date, status, created_by, source_snapshot) VALUES (?, ?, ?, ?, ?, ?, ?)',
         undef, $id, $opts->{prompt}, $opts->{resolution_criteria},
@@ -147,7 +179,7 @@ sub stake {
     my $dbh  = $db->dbh;
     my $outer_txn = !$dbh->{AutoCommit};
     $db->begin_transaction unless $outer_txn;
-    my $pos_id = $self->_gen_id('pos');
+    my $pos_id = $self->gen_id('pos');
     eval {
         my $rows = $dbh->do(
             'UPDATE fc_wallet_daily SET balance = balance - ? WHERE user_id = ? AND date = ? AND balance >= ?',
@@ -210,6 +242,14 @@ draft/approve and resolution flows arrive in later sessions.
 Debits the wallet and records a YES/NO position at integer price 0..100.
 Dies C<FC:insufficient_balance> when short (also C<FC:invalid_*>,
 C<FC:no_such_question>, C<FC:question_not_open>).
+
+=item settle_credit($user_id, $amount)
+
+Settlement-only credit for winnings and refunds. Not a deposit path.
+
+=item gen_id($prefix)
+
+Unique TEXT surrogate key shared with the other C<FB::Fc::*> modules.
 
 =back
 

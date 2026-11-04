@@ -1,3 +1,5 @@
+// CHANGE NOTICE (Session 3 forecast reputation, 2026-11-04, California Vision):
+// - lobby profile shows the forecast record (won/lost/Brier) for named users.
 ;
 (function($, window, document) {
     $.widget("poker.lobby", {
@@ -240,6 +242,18 @@
             if (g.success) {
                 f._update_lobby(g)
             }
+        },
+        fc_reputation_res: function(g) {
+            // Session 3: named-user profile shows the forecast record.
+            if (!g || !g.success) { return; }
+            var won = Number(g.won) || 0, lost = Number(g.lost) || 0;
+            var text = (won + lost) > 0
+                ? 'Forecast: ' + won + ' won, ' + lost + ' lost'
+                    + ((g.brier === null || g.brier === undefined) ? '' : ', Brier ' + Number(g.brier).toFixed(2))
+                : 'Forecast: no settled positions yet';
+            $("#lobby-profile").html(
+                '<div class="guest-notice">' + text + ' — <a href="/forecast">Play</a></div>'
+            ).show();
         },
         _buildTable: function(h) {
             var e = this,
@@ -527,6 +541,8 @@
             h.myData.isGuest = false;
             e._store_bookmark(f.bookmark);
             $("#lobby-profile").empty().hide();
+            // Session 3: forecast reputation fills the profile on response.
+            $("#poker-main").main("fc_reputation");
             $("#lobby-name").show();
             $("#lobby-chips").show();
             e._update_lobby(f);
@@ -594,6 +610,8 @@
                    //alert('cashier');
                    $("#poker-main").main("fetch_cashier");
                 }).show();
+                // Session 3: forecast reputation for the named profile.
+                $("#poker-main").main("fc_reputation");
 
                 //FB.api('/111374336789924', {
                 FB.api('/me', {
