@@ -219,7 +219,7 @@ path anywhere in this module. Do not add one.
 
 =item ensure_schema($db)
 
-Idempotently applies C<db/fc.schema> (all five fc_* tables + indexes).
+Idempotently applies C<db/fc.schema> (all fc_* tables + indexes).
 Runs at server boot (FB::BUILD) and in tests.
 
 =item ensure_allotted($user_id [, $date])

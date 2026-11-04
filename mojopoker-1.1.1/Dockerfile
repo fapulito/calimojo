@@ -33,6 +33,6 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \
   CMD perl -e 'use LWP::Simple; my $r = get("http://localhost:8080/health"); exit($r ? 0 : 1)'
 
-# Run the application
-# Fly.io sets PORT env var, but we default to 8080
-CMD ["perl", "script/mojopoker", "daemon", "-l", "http://*:8080"]
+# Run the application in the foreground (MOJOPOKER_FOREGROUND=1 comes from
+# fly.toml env). PORT also comes from fly.toml (8080); the script ignores argv.
+CMD ["perl", "script/mojopoker.pl"]

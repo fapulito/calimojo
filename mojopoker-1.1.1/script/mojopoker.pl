@@ -1,4 +1,8 @@
 #!/usr/bin/env perl
+# CHANGE NOTICE (Session 5 deploy prep, 2026-11-04, California Vision):
+# - PORT env selects the listen port (default 3000); MOJOPOKER_FOREGROUND=1
+#   skips the fork/setsid/pidfile/stdout-discard so containers stay attached
+#   and keep their logs. Daemon behavior unchanged otherwise.
 
 use strict;
 use warnings;
@@ -30,7 +34,8 @@ $ENV{MOJO_MODE}               = 'production';
 $ENV{MOJO_INACTIVITY_TIMEOUT} = 0;
 $ENV{MOJO_LOG_LEVEL} = 'fatal';
 
-my @listen = ('http://*:3000');
+my $port = $ENV{PORT} // 3000;
+my @listen = ("http://*:$port");
 
 my $daemon = Mojo::Server::Daemon->new(
     app                => Ships->new,
@@ -39,22 +44,29 @@ my $daemon = Mojo::Server::Daemon->new(
     proxy              => 1,
 );
 
-# Fork and kill parent
-die "Can't fork: $!" unless defined( my $pid = fork );
-exit 0 if $pid;
-POSIX::setsid or die "Can't start a new session: $!";
+# Containers must stay in the foreground: PID 1 exiting ends the container,
+# and Fly collects logs from stdout/stderr. MOJOPOKER_FOREGROUND=1 skips the
+# fork/setsid/pidfile dance and keeps all output attached.
+unless ($ENV{MOJOPOKER_FOREGROUND}) {
+    # Fork and kill parent
+    die "Can't fork: $!" unless defined( my $pid = fork );
+    exit 0 if $pid;
+    POSIX::setsid or die "Can't start a new session: $!";
 
-# pid file
-open my $handle, '>', 'mojopoker.pid';
-print $handle $$;
-close $handle;
+    # pid file
+    open my $handle, '>', 'mojopoker.pid';
+    print $handle $$;
+    close $handle;
 
-# Close filehandles
-open STDIN,  '</dev/null';
-open STDERR, '>&STDOUT';
+    # Close filehandles
+    open STDIN,  '</dev/null';
+    open STDERR, '>&STDOUT';
+}
 
 $daemon->start;
 
-open STDOUT, '>/dev/null';
+unless ($ENV{MOJOPOKER_FOREGROUND}) {
+    open STDOUT, '>/dev/null';
+}
 
 EV::run;

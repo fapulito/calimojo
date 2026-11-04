@@ -11,7 +11,13 @@ primary_region = "iad"  # US East (Ashburn) - change to your preferred region
 # Environment variables (non-sensitive)
 [env]
   MOJO_MODE = "production"
-  # PORT is automatically set by Fly.io
+  DATABASE_TYPE = "postgres"
+  PORT = "8080"
+  MOJOPOKER_FOREGROUND = "1"
+  FORECAST_CHALLENGE_MINUTES = "5"
+  # MOJOPOKER_RATE_LIMIT is intentionally unset (rate limiting defaults on).
+  # DATABASE_URL, FACEBOOK_APP_ID, FACEBOOK_APP_SECRET, MODEL_API_KEY are
+  # secrets (flyctl secrets set), never committed here.
   
   # Observability configuration placeholders
   # These should be set as secrets using: fly secrets set KEY=value
@@ -68,7 +74,3 @@ primary_region = "iad"  # US East (Ashburn) - change to your preferred region
   min_count = 1
   max_count = 3  # Scale up to 3 machines under load
 
-# Metrics
-[metrics]
-  port = 9091
-  path = "/metrics"

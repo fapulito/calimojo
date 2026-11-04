@@ -6,6 +6,7 @@ requires 'Getopt::Long';
 requires 'Moo';
 requires 'Mojo::IOLoop';
 requires 'Mojolicious';
+requires 'EV';  # script/mojopoker.pl + Linux timers need native EV
 requires 'Algorithm::Combinatorics';
 requires 'Digest::SHA';
 requires 'JSON';
